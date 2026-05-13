@@ -1,4 +1,4 @@
-import { MdOutlineDashboard } from "react-icons/md";
+import { MdOutlineDashboard, MdOutlineSettings, MdOutlineReceiptLong } from "react-icons/md";
 import { HiOutlineUsers } from "react-icons/hi";
 import { PiSuitcaseSimpleBold, PiBriefcaseDuotone } from "react-icons/pi";
 import { MdOutlineAnalytics } from "react-icons/md";
@@ -13,6 +13,7 @@ export const Menus = [
     { name: "Projects", icon: PiBriefcaseDuotone, path: "/projects" },
     {name:"Client", icon:HiOutlineUsers,path:"/clients"},
     {name:"Deals", icon:FaRegHandshake,path:"/deals"},
+    { name: "BOQ", icon: MdOutlineReceiptLong, path: "/boq" },
     { name: "Accounts", icon: PiSuitcaseSimpleBold, path: "/accounts" },
     { name: "Pipeline", icon:  TbDeviceDesktopAnalytics, path: "/pipeline" },
     { name: "Analytics", icon: MdOutlineAnalytics, path: "/analytics" },
@@ -20,6 +21,7 @@ export const Menus = [
 ];
 
 export const SupportMenu = [
+    { name: "Settings", icon: MdOutlineSettings, path: "/settings" },
     { name: "Support", icon: MdOutlineContactSupport, path: "/support" },
     { name: "Sign Out", icon: PiSignOut, path: "/signout" },
 ];

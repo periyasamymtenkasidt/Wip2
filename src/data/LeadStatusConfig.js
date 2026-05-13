@@ -8,7 +8,6 @@ export const PIPELINE_STEPS = [
   "Proposal",
   "Negotiation",
   "Won",
-  "Converted",
 ];
 
 export const OFF_RAMP_STATUSES = ["On Hold", "Lost"];
@@ -33,7 +32,6 @@ export const STATUS_BADGE = {
   Proposal: "bg-blue-100 text-blue-600",
   Negotiation: "bg-amber-100 text-amber-700",
   Won: "bg-emerald-100 text-emerald-700",
-  Converted: "bg-teal-100 text-teal-700",
   "On Hold": "bg-gray-100 text-gray-600",
   Lost: "bg-red-100 text-red-600",
 };
@@ -156,10 +154,10 @@ export const getProjectStage = (lead, milestones) => {
     };
   }
   if (status === "won") {
-    return { phase: "sales", stepIndex: 2, label: "Won" };
-  }
-  if (status === "converted") {
-    // Walk milestones to find highest paid one.
+    if (!lead.convertedClientID) {
+      return { phase: "sales", stepIndex: 2, label: "Won" };
+    }
+    // Won + client created: walk milestones to find highest paid one.
     const paid = (milestones || []).filter((m) => m.status === "paid");
     if (paid.length === 0)
       return { phase: "delivery", stepIndex: -1, label: "Awaiting Booking" };

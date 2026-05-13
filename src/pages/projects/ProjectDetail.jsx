@@ -98,6 +98,17 @@ const activityIcon = (entry) => {
       iconColor: "text-emerald-600",
     };
   }
+  if (entry.type === "quote") {
+    return {
+      title: `Quote ${entry.quoteId || ""} sent`.trim(),
+      body: [entry.subject, entry.to ? `to ${entry.to}` : ""]
+        .filter(Boolean)
+        .join(" • "),
+      icon: <FiFileText size={12} />,
+      bg: "bg-blue-50",
+      iconColor: "text-blue-600",
+    };
+  }
   // status
   const to = entry.to?.toLowerCase();
   const map = {
@@ -195,7 +206,12 @@ const groupActivityByPhase = (activity) => {
   const out = { proposal: [], negotiation: [], onhold: [], won: [], delivery: [], lost: [] };
   oldestFirst.forEach((entry) => {
     if (entry.type === "status") {
-      phase = phaseFromStatus(entry.to);
+      // A "Won" transition that also created a client (clientID set) moves
+      // straight into delivery — same semantics as the old "Converted" event.
+      phase =
+        entry.to === "Won" && entry.clientID
+          ? "delivery"
+          : phaseFromStatus(entry.to);
     } else if (entry.type === "negotiation") {
       phase = "negotiation";
     } else if (entry.type === "milestone") {
@@ -396,8 +412,8 @@ const ProjectDetail = () => {
 
   const status = lead.status?.toLowerCase();
   const salesIdx = SALES_STEPS.findIndex((s) => s.toLowerCase() === status);
-  const adjustedSalesIdx = status === "converted" ? SALES_STEPS.length - 1 : salesIdx;
-  const deliveryActive = status === "converted" || status === "won";
+  const adjustedSalesIdx = status === "won" ? SALES_STEPS.length - 1 : salesIdx;
+  const deliveryActive = status === "won";
   const highestPaidId = milestones
     .filter((m) => m.status === "paid")
     .reduce((max, m) => (m.id > max ? m.id : max), 0);
@@ -405,7 +421,7 @@ const ProjectDetail = () => {
 
   const isLost = status === "lost";
   const isOnHold = status === "on hold";
-  const isConverted = status === "converted";
+  const isConverted = status === "won" && !!lead.convertedClientID;
 
   const client = lead.convertedClientID
     ? [

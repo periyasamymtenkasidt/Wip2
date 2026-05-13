@@ -4,6 +4,20 @@ import { Loader2 } from "lucide-react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
+import { getPreset, getPresetKeys } from "../../data/QuotePresets";
+
+const DEFAULT_PRESET = "2BHK";
+
+// Capture the property preset on the inquiry so the Send Proposal flow
+// later knows which scope template to start from. Scope items themselves
+// are NOT collected here — they belong to the proposal.
+const buildPresetState = (key) => {
+  const preset = getPreset(key);
+  return {
+    quotePreset: key,
+    quoteSizeRange: preset?.sizeRange || "",
+  };
+};
 
 const INITIAL_FORM_STATE = {
   fullName: "",
@@ -18,6 +32,7 @@ const INITIAL_FORM_STATE = {
   location: "",
   inquiryStatus: "Inquiry",
   architecturalNotes: "",
+  ...buildPresetState(DEFAULT_PRESET),
 };
 
 const inquirySources = [
@@ -122,7 +137,7 @@ const SectionHeader = ({ children }) => (
 );
 
 function NewInquiriesform({ onClose, onAddLead }) {
-  
+
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,6 +146,11 @@ function NewInquiriesform({ onClose, onAddLead }) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handlePresetChange = (e) => {
+    const key = e.target.value;
+    setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
   };
 
   const validate = () => {
@@ -246,6 +266,34 @@ function NewInquiriesform({ onClose, onAddLead }) {
           <div className="grid grid-cols-2 gap-4">
             {FIELD_CONFIG.projectDetails.map(field)}
           </div>
+        </div>
+
+        <div className="border-t border-border mb-6" />
+
+        <div className="mb-6">
+          <SectionHeader>Property Preset</SectionHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              name="quotePreset"
+              label="Preset"
+              type="select"
+              value={formData.quotePreset}
+              onChange={handlePresetChange}
+              options={getPresetKeys()}
+            />
+            <InputField
+              name="quoteSizeRange"
+              label="Size Range"
+              type="text"
+              value={formData.quoteSizeRange}
+              onChange={handleChange}
+              placeholder="e.g. 800–1100 sq ft"
+            />
+          </div>
+          <p className="text-[11px] text-text-subtle mt-2">
+            The proposal you send later will start from this preset. Scope
+            items are added when sending the proposal.
+          </p>
         </div>
 
         <div className="border-t border-border mb-6" />

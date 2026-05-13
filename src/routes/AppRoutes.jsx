@@ -16,6 +16,9 @@ import Signout from "../pages/Signout";
 import Deals from "../pages/deals/Deals";
 import Projects from "../pages/projects/Projects";
 import ProjectDetail from "../pages/projects/ProjectDetail";
+import Settings from "../pages/settings/Settings";
+import BOQList from "../pages/boq/BOQList";
+import BOQEditor from "../pages/boq/BOQEditor";
 
 const AppRoutes = () => {
   return (
@@ -36,12 +39,17 @@ const AppRoutes = () => {
           <Route index element={<Projects />} />
           <Route path=":id" element={<ProjectDetail />} />
         </Route>
+        <Route path="boq">
+          <Route index element={<BOQList />} />
+          <Route path=":id" element={<BOQEditor />} />
+        </Route>
           <Route path="deals" element={<Deals/>} />
         <Route path="accounts" element={<Accounts />} />
         <Route path="pipeline" element={<Pipeline />} />
         <Route path="analytics" element={<Analytics />} />
         <Route path="reports" element={<Reports />} />
         <Route path="support" element={<Support />} />
+        <Route path="settings" element={<Settings />} />
         <Route path="signout" element={<Signout />} />
       </Route>
     </Routes>

@@ -5,6 +5,19 @@ import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
 import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
 import { ALL_STATUSES } from "../../data/LeadStatusConfig";
+import { getPreset, getPresetKeys } from "../../data/QuotePresets";
+
+const DEFAULT_PRESET = "2BHK";
+
+// Inquiry-form preset only stores the key + size range. Scope of work is
+// captured later in the Send Proposal flow.
+const buildPresetState = (key) => {
+  const preset = getPreset(key);
+  return {
+    quotePreset: key,
+    quoteSizeRange: preset?.sizeRange || "",
+  };
+};
 
 const INITIAL_FORM_STATE = {
   fullName: "",
@@ -19,9 +32,12 @@ const INITIAL_FORM_STATE = {
   location: "",
   inquiryStatus: "",
   architecturalNotes: "",
+  ...buildPresetState(DEFAULT_PRESET),
 };
 
-const inquiryStatuses = ALL_STATUSES.filter((s) => s !== "Converted");
+// "Won" is set atomically via the Mark Won button (which also creates a
+// client record), so it must not be manually selectable here.
+const inquiryStatuses = ALL_STATUSES.filter((s) => s !== "Won");
 
 const inquirySources = ["Referral", "Walk-in", "Social Media", "Website", "Cold Call", "Other"];
 
@@ -71,6 +87,13 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
         ? `${parts[2]}-${parts[1]}-${parts[0]}`
         : initialData.possessionDate;
     }
+    const keys = getPresetKeys();
+    const presetKey = keys.includes(initialData.quotePreset)
+      ? initialData.quotePreset
+      : keys.includes(DEFAULT_PRESET)
+        ? DEFAULT_PRESET
+        : keys[0];
+    const presetDefaults = buildPresetState(presetKey);
     setFormData({
       fullName: initialData.clientName || "",
       phoneNumber: initialData.phone || "",
@@ -84,6 +107,9 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
       location: initialData.location || "",
       inquiryStatus: initialData.status || "",
       architecturalNotes: initialData.architecturalNotes || "",
+      quotePreset: presetKey,
+      quoteSizeRange:
+        initialData.quoteSizeRange ?? presetDefaults.quoteSizeRange,
     });
   }, [initialData]);
 
@@ -91,6 +117,11 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
+  };
+
+  const handlePresetChange = (e) => {
+    const key = e.target.value;
+    setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
   };
 
   const validate = () => {
@@ -195,6 +226,34 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
           <div className="grid grid-cols-2 gap-4">
             {FIELD_CONFIG.projectDetails.map(field)}
           </div>
+        </div>
+
+        <div className="border-t border-border mb-6" />
+
+        <div className="mb-6">
+          <SectionHeader>Property Preset</SectionHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              name="quotePreset"
+              label="Preset"
+              type="select"
+              value={formData.quotePreset}
+              onChange={handlePresetChange}
+              options={getPresetKeys()}
+            />
+            <InputField
+              name="quoteSizeRange"
+              label="Size Range"
+              type="text"
+              value={formData.quoteSizeRange}
+              onChange={handleChange}
+              placeholder="e.g. 800–1100 sq ft"
+            />
+          </div>
+          <p className="text-[11px] text-text-subtle mt-2">
+            Used as the starting point when sending the proposal. Scope items
+            are added in the Send Proposal flow.
+          </p>
         </div>
 
         <div className="border-t border-border mb-6" />

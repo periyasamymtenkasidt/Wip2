@@ -4,13 +4,7 @@ import { Loader2 } from "lucide-react";
 import Modal from "../../components/Modal";
 import InputField from "../../components/InputField";
 import { PAYMENT_MILESTONES } from "../../data/MilestoneConfig";
-
-const formatAmount = (amount) => {
-  if (!amount || amount <= 0) return "—";
-  if (amount >= 10000000) return `₹${(amount / 10000000).toFixed(2)} Cr`;
-  if (amount >= 100000)   return `₹${(amount / 100000).toFixed(1)}L`;
-  return `₹${amount.toLocaleString("en-IN")}`;
-};
+import { formatAmount } from "../../utils/formatAmount";
 
 // Parse a lead's investment range (e.g. "₹60L-70L", "₹50L – ₹1Cr", "₹1-1.2Cr")
 // and return the midpoint as a number, used to auto-suggest the confirmed

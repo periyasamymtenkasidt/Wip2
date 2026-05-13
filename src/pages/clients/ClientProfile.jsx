@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiArrowRight, FiArrowLeft, FiPhone, FiMail, FiMessageCircle } from "react-icons/fi";
+import { FiPlus, FiEdit2, FiTrash2, FiCheck, FiArrowRight, FiArrowLeft, FiPhone, FiMail, FiMessageCircle, FiFileText } from "react-icons/fi";
 import { ClientTableData } from "../../data/ClientTableData";
 import EditClientForm from "./EditClientForm";
+import QuoteModal from "../../components/QuoteModal";
 import Client from "../../assets/images/Client_avatar.png";
 
 const formatAmount = (amount) => {
@@ -42,6 +43,7 @@ const ClientProfile = () => {
 
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [milestones, setMilestones] = useState(() => {
     try {
       const saved = localStorage.getItem(`clientMilestones_${id}`);
@@ -201,6 +203,12 @@ const ClientProfile = () => {
           </div>
         </div>
         <div className="flex gap-3">
+          <button
+            onClick={() => setShowQuoteModal(true)}
+            className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
+          >
+            <FiFileText size={16} /> New Quote
+          </button>
           <button
             onClick={() => setIsEditFormOpen(true)}
             className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
@@ -570,6 +578,21 @@ const ClientProfile = () => {
           onClose={() => setIsEditFormOpen(false)}
           onSave={handleEditSave}
           hasMilestones={!!milestones}
+        />
+      )}
+
+      {/* Quick Quote Modal */}
+      {showQuoteModal && (
+        <QuoteModal
+          parentId={client.clientID}
+          parentType="client"
+          recipient={{
+            name: client.clientName,
+            email: client.clientEmail,
+            phone: client.clientPhone,
+          }}
+          defaultPropertyType={client.location}
+          onClose={() => setShowQuoteModal(false)}
         />
       )}
 

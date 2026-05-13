@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import avatar from "../assets/images/avatar-profile-user.svg";
-import { TbSearch, TbBuildings } from "react-icons/tb";
+import wipLogo from "../assets/images/Logo.png";
+import { TbSearch } from "react-icons/tb";
 import { IoMdNotificationsOutline } from "react-icons/io";
 
 const Header = () => {
@@ -19,11 +20,32 @@ const Header = () => {
 
   return (
     <div className="px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center bg-surface mx-4 my-2 rounded-lg shadow-xs">
-      <div className="flex gap-3 sm:gap-4 items-center">
-        <TbBuildings size={30} className="bg-primary text-white rounded-lg p-1" />
-        <div className="hidden sm:block">
-          <h4 className="text-lg font-semibold text-primary">Executive CRM</h4>
-          <p className="text-[10px] text-text-subtle">DIGITAL ATELIER</p>
+      <div className="wip-glass relative overflow-hidden rounded-xl px-4 py-2 flex gap-3.5 items-center transition-transform duration-300 hover:scale-[1.02]">
+        {/* Animated shimmer sweep */}
+        <span
+          aria-hidden="true"
+          className="wip-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12"
+        />
+        <img
+          src={wipLogo}
+          alt="WIP"
+          className="relative h-13 w-auto object-contain shrink-0"
+          style={{
+            height: "52px",
+            filter:
+              "contrast(1.25) saturate(1.15) drop-shadow(0 1px 1.5px rgba(139, 105, 20, 0.18))",
+          }}
+        />
+        <div className="relative hidden sm:flex flex-col leading-none border-l border-[#c5a367]/50 pl-3 py-1">
+          <p className="text-[9px] uppercase tracking-[0.45em] text-[#8b6914] font-bold leading-none">
+            Architecture
+          </p>
+          <p className="text-[9px] uppercase tracking-[0.45em] text-[#8b6914] font-bold mt-1.5 leading-none">
+            Interiors
+          </p>
+          <p className="text-[7px] uppercase tracking-[0.35em] text-text-subtle mt-2 leading-none">
+            Chennai
+          </p>
         </div>
       </div>
 

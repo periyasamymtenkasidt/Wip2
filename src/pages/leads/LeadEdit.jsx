@@ -7,6 +7,14 @@ import EditInquiryform from "./EditInquiryform";
 import ConvertToClientForm from "./ConvertToClientForm";
 import NegotiationModal from "../projects/NegotiationModal";
 import LogActivityModal from "../projects/LogActivityModal";
+import QuoteModal from "../../components/QuoteModal";
+import QuotePreviewModal from "../../components/QuotePreviewModal";
+import {
+  getDocumentsForLead,
+  getLatestQuoteForParent,
+  saveQuoteDocument,
+} from "../../data/QuotePresets";
+import { downloadQuoteAsImage } from "../../utils/downloadQuoteImage";
 import { PAYMENT_MILESTONES } from "../../data/MilestoneConfig";
 import {
   PIPELINE_STEPS,
@@ -39,8 +47,6 @@ import {
   FiXCircle,
   FiTrendingUp,
   FiAward,
-  FiPaperclip,
-  FiX,
   FiEdit3,
 } from "react-icons/fi";
 
@@ -127,190 +133,94 @@ const formatBytes = (bytes) => {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
-const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024; // standard email cap
+const formatDocSize = (snapshot) => {
+  // Synthetic size based on quote complexity — purely cosmetic until we
+  // generate a real PDF.
+  const items = snapshot?.scopeItems?.length || 0;
+  return `PDF • ${(120 + items * 18).toLocaleString()} KB`;
+};
 
-const EmailProposalModal = ({ lead, isResend, onClose, onSend }) => {
-  const [to, setTo] = useState(lead?.email || "");
-  const [subject, setSubject] = useState(
-    `${isResend ? "Revised proposal" : "Proposal"} for your project — ${lead?.proposalId || ""}`,
-  );
-  const [body, setBody] = useState(
-    `Hi ${lead?.clientName || ""},\n\nPlease find the attached ${isResend ? "revised " : ""}proposal for your project. We've covered scope, timeline and investment.\n\nLet us know your thoughts at your convenience.\n\nBest regards,\nDigital Atelier`,
-  );
-  const [files, setFiles] = useState([]);
-  const [error, setError] = useState("");
-  const [sending, setSending] = useState(false);
+const formatDocDate = (iso) => {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+};
 
-  const totalBytes = files.reduce((sum, f) => sum + f.size, 0);
-  const canSend =
-    to.trim() && subject.trim() && body.trim() && totalBytes <= MAX_ATTACHMENT_BYTES;
+const DocumentsCard = ({ documents, onOpen }) => {
+  const [downloadingId, setDownloadingId] = useState(null);
 
-  const handleFiles = (incoming) => {
-    setError("");
-    const list = Array.from(incoming || []);
-    const next = [...files];
-    list.forEach((f) => {
-      if (!next.find((x) => x.name === f.name && x.size === f.size)) next.push(f);
-    });
-    const newTotal = next.reduce((s, f) => s + f.size, 0);
-    if (newTotal > MAX_ATTACHMENT_BYTES) {
-      setError(`Total attachment size exceeds 25 MB (currently ${formatBytes(newTotal)})`);
+  const handleDownload = async (e, doc) => {
+    e.stopPropagation();
+    setDownloadingId(doc.docId);
+    try {
+      await downloadQuoteAsImage(doc.snapshot, doc.fileName);
+    } finally {
+      setDownloadingId(null);
     }
-    setFiles(next);
-  };
-
-  const removeFile = (idx) => {
-    setError("");
-    setFiles((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const handleSend = async () => {
-    setSending(true);
-    // Hook real email API here. For mock, we record attachment metadata only.
-    await new Promise((r) => setTimeout(r, 400));
-    const attachments = files.map((f) => ({ name: f.name, size: f.size, type: f.type }));
-    onSend({ to, subject, body, attachments });
   };
 
   return (
-    <div className="fixed inset-0 z-100 flex items-center justify-center bg-black/50 backdrop-blur-[2px] p-4">
-      <div className="bg-white rounded-[16px] font-manrope shadow-2xl w-full max-w-[560px] mx-auto p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start gap-3 mb-5">
-          <div className="w-12 h-12 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-            <FiSend size={22} />
-          </div>
-          <div>
-            <h2 className="text-[18px] font-bold text-[#1e293b]">
-              {isResend ? "Resend Proposal" : "Send Proposal"}
-            </h2>
-            <p className="text-[12px] text-text-muted mt-0.5">
-              {isResend
-                ? "Send a revised proposal. Stage stays unchanged."
-                : "Email the proposal to the client. The lead will move to the Proposal stage."}
-            </p>
-          </div>
-        </div>
-
-        <div className="space-y-4 mb-5">
-          <div>
-            <label className="block text-[12px] font-semibold text-text mb-1.5">
-              To
-            </label>
-            <input
-              type="email"
-              value={to}
-              onChange={(e) => setTo(e.target.value)}
-              className="w-full rounded-lg border border-border px-3 py-2 text-[13px] text-text focus:outline-none focus:border-select-blue"
-            />
-          </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-text mb-1.5">
-              Subject
-            </label>
-            <input
-              type="text"
-              value={subject}
-              onChange={(e) => setSubject(e.target.value)}
-              className="w-full rounded-lg border border-border px-3 py-2 text-[13px] text-text focus:outline-none focus:border-select-blue"
-            />
-          </div>
-          <div>
-            <label className="block text-[12px] font-semibold text-text mb-1.5">
-              Message
-            </label>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={6}
-              className="w-full rounded-lg border border-border px-3 py-2 text-[13px] text-text focus:outline-none focus:border-select-blue resize-none"
-            />
-          </div>
-
-          {/* Attachments */}
-          <div>
-            <div className="flex items-center justify-between mb-1.5">
-              <label className="block text-[12px] font-semibold text-text">
-                Attachments
-              </label>
-              <span className="text-[11px] text-text-subtle">
-                {files.length > 0
-                  ? `${files.length} file${files.length > 1 ? "s" : ""} • ${formatBytes(totalBytes)}`
-                  : "Max 25 MB total"}
-              </span>
-            </div>
-
-            <label
-              htmlFor="proposal-attachments"
-              className="flex items-center justify-center gap-2 w-full py-4 border-2 border-dashed border-border rounded-lg text-[13px] font-medium text-text-muted hover:border-select-blue hover:text-select-blue hover:bg-bg-soft transition-all cursor-pointer"
-            >
-              <FiPaperclip size={16} />
-              Click to upload (PDF, DOCX, images, ZIP)
-            </label>
-            <input
-              id="proposal-attachments"
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-              accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.png,.jpg,.jpeg,.zip,.dwg"
-            />
-
-            {files.length > 0 && (
-              <div className="mt-3 space-y-2">
-                {files.map((f, idx) => (
-                  <div
-                    key={`${f.name}-${idx}`}
-                    className="flex items-center justify-between p-2.5 border border-border rounded-lg bg-bg-soft"
-                  >
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <div className="w-8 h-8 rounded-md bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                        <FiFileText size={14} />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[12px] font-semibold text-[#1e293b] truncate">
-                          {f.name}
-                        </p>
-                        <p className="text-[10px] text-text-subtle">
-                          {formatBytes(f.size)}
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => removeFile(idx)}
-                      className="text-gray-400 hover:text-red-500 shrink-0 ml-2"
-                      aria-label="Remove attachment"
-                    >
-                      <FiX size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {error && (
-              <p className="text-red-500 text-[11px] mt-2">{error}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="flex gap-3 justify-end">
-          <button
-            onClick={onClose}
-            disabled={sending}
-            className="px-5 py-2.5 rounded-lg border border-border text-[13px] font-semibold text-text-muted hover:bg-gray-50 disabled:opacity-50"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={!canSend || sending}
-            className="px-5 py-2.5 rounded-lg bg-select-blue text-white text-[13px] font-semibold hover:bg-primary disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-          >
-            <FiSend size={14} /> {sending ? "Sending…" : "Send Email"}
-          </button>
-        </div>
+    <div className="bg-white rounded-[20px] p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
+      <div className="flex justify-between items-center mb-6">
+        <h3 className="text-[17px] font-bold text-[#1e293b]">Documents</h3>
+        {documents.length > 0 && (
+          <span className="px-2.5 py-1 bg-[#eff6ff] text-[#1d4ed8] text-[10px] font-bold tracking-wider rounded-md">
+            {documents.length}
+          </span>
+        )}
       </div>
+
+      {documents.length === 0 ? (
+        <div className="rounded-[14px] border border-dashed border-border bg-bg-soft px-4 py-8 text-center">
+          <div className="w-10 h-10 mx-auto bg-[#eff6ff] text-[#3b82f6] rounded-[10px] flex items-center justify-center mb-2">
+            <FiFileText size={18} />
+          </div>
+          <p className="text-[12px] font-semibold text-text">
+            No documents yet
+          </p>
+          <p className="text-[11px] text-text-muted mt-0.5">
+            Sent proposals appear here automatically.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3.5">
+          {documents.map((doc) => (
+            <div
+              key={doc.docId}
+              className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-[#bae6fd] hover:bg-[#f8fafc] transition-all group"
+            >
+              <button
+                type="button"
+                onClick={() => onOpen?.(doc)}
+                className="flex items-center gap-3.5 min-w-0 text-left flex-1 cursor-pointer"
+                title="Preview quote"
+              >
+                <div className="w-10 h-10 bg-[#eff6ff] text-[#3b82f6] rounded-[10px] flex items-center justify-center shrink-0">
+                  <FiFileText size={18} />
+                </div>
+                <div className="truncate pr-2">
+                  <p className="text-[13px] font-bold text-[#1e293b] truncate leading-tight mb-1">
+                    {doc.fileName}
+                  </p>
+                  <p className="text-[11px] font-medium text-gray-400">
+                    {formatDocSize(doc.snapshot)} · Sent{" "}
+                    {formatDocDate(doc.sentAt)}
+                  </p>
+                </div>
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleDownload(e, doc)}
+                disabled={downloadingId === doc.docId}
+                className="text-gray-400 hover:text-[#3b82f6] disabled:opacity-50 transition-colors shrink-0 ml-2 p-1"
+                title="Download as PNG"
+              >
+                <FiDownload size={18} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
@@ -428,11 +338,22 @@ const LeadEdit = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showConvertForm, setShowConvertForm] = useState(false);
   const [showLostModal, setShowLostModal] = useState(false);
-  const [showEmailModal, setShowEmailModal] = useState(false);
   const [showNegotiationModal, setShowNegotiationModal] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [logTab, setLogTab] = useState("call");
+  const [showProposalModal, setShowProposalModal] = useState(false);
+  const [previewDoc, setPreviewDoc] = useState(null);
   const [activity, setActivity] = useState(() => (id ? getActivity(id) : []));
+  const [documents, setDocuments] = useState(() =>
+    id ? getDocumentsForLead(id) : [],
+  );
+
+  // Refresh documents when sends complete. The `activity` state changes on
+  // every email/quote send, so it's a reliable trigger.
+  React.useEffect(() => {
+    if (!id) return;
+    setDocuments(getDocumentsForLead(id));
+  }, [id, activity]);
 
   // Persist a status transition: write to localStorage, append activity entry,
   // re-render, and notify the leads list so its counts/tabs stay in sync.
@@ -490,6 +411,8 @@ const LeadEdit = () => {
       possessionDate: updatedData.processionDate
         ? updatedData.processionDate.split("-").reverse().join(".")
         : lead.possessionDate,
+      quotePreset: updatedData.quotePreset ?? lead.quotePreset,
+      quoteSizeRange: updatedData.quoteSizeRange ?? lead.quoteSizeRange,
     };
 
     const filteredLeads = newLeads.filter((l) => l.proposalId !== id);
@@ -577,7 +500,7 @@ const LeadEdit = () => {
     let newLeads = savedLeads ? JSON.parse(savedLeads) : [];
     const convertedLead = {
       ...lead,
-      status: "Converted",
+      status: "Won",
       convertedClientID: clientID,
     };
     const filtered = newLeads.filter((l) => l.proposalId !== lead.proposalId);
@@ -590,7 +513,7 @@ const LeadEdit = () => {
       appendActivity(lead.proposalId, {
         type: "status",
         from: lead.status,
-        to: "Converted",
+        to: "Won",
         clientID,
       }),
     );
@@ -650,7 +573,7 @@ const LeadEdit = () => {
           )}
           {lead.status?.toLowerCase() === "qualified" && (
             <button
-              onClick={() => setShowEmailModal(true)}
+              onClick={() => setShowProposalModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
             >
               <FiSend size={16} /> Send Proposal
@@ -659,7 +582,7 @@ const LeadEdit = () => {
           {lead.status?.toLowerCase() === "proposal" && (
             <>
               <button
-                onClick={() => setShowEmailModal(true)}
+                onClick={() => setShowProposalModal(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
               >
                 <FiMail size={16} /> Resend Proposal
@@ -674,7 +597,7 @@ const LeadEdit = () => {
           )}
           {lead.status?.toLowerCase() === "negotiation" && (
             <button
-              onClick={() => setShowEmailModal(true)}
+              onClick={() => setShowProposalModal(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
             >
               <FiMail size={16} /> Resend Proposal
@@ -683,21 +606,13 @@ const LeadEdit = () => {
           {(lead.status?.toLowerCase() === "proposal" ||
             lead.status?.toLowerCase() === "negotiation") && (
             <button
-              onClick={() => transitionStatus("Won")}
+              onClick={() => setShowConvertForm(true)}
               className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-emerald-700 shadow-sm transition-all"
             >
               <FiAward size={16} /> Mark Won
             </button>
           )}
-          {lead.status?.toLowerCase() === "won" && (
-            <button
-              onClick={() => setShowConvertForm(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
-            >
-              <FiUserCheck size={16} /> Convert to Client
-            </button>
-          )}
-          {lead.status?.toLowerCase() === "converted" && (
+          {lead.status?.toLowerCase() === "won" && lead.convertedClientID && (
             <button
               onClick={() => navigate(`/clients/${lead.convertedClientID}`)}
               className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-200 cursor-pointer rounded-xl text-sm font-semibold text-emerald-700 hover:bg-emerald-100 shadow-sm transition-all"
@@ -709,7 +624,6 @@ const LeadEdit = () => {
           {/* Hold toggle — available while the deal is still open */}
           {!isLost &&
             lead.status?.toLowerCase() !== "won" &&
-            lead.status?.toLowerCase() !== "converted" &&
             (isOnHold ? (
               <button
                 onClick={() => transitionStatus("Qualified")}
@@ -728,8 +642,7 @@ const LeadEdit = () => {
 
           {/* Mark Lost — available until the deal is closed (won/converted) */}
           {!isLost &&
-            lead.status?.toLowerCase() !== "won" &&
-            lead.status?.toLowerCase() !== "converted" && (
+            lead.status?.toLowerCase() !== "won" && (
               <button
                 onClick={() => setShowLostModal(true)}
                 className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-200 cursor-pointer rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 shadow-sm transition-all"
@@ -801,7 +714,19 @@ const LeadEdit = () => {
                 <button className="px-6 py-2.5 bg-[#001552] text-white rounded-xl text-[13px] font-semibold shadow-md shadow-[#001552]/20 hover:bg-blue-950 transition-colors">
                   Schedule
                 </button>
-                <button className="px-6 py-2.5 bg-white border border-[#001552] text-[#001552] rounded-xl text-[13px] font-semibold hover:bg-gray-50 transition-colors">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (documents[0]) setPreviewDoc(documents[0]);
+                  }}
+                  disabled={documents.length === 0}
+                  className="px-6 py-2.5 bg-white border border-[#001552] text-[#001552] rounded-xl text-[13px] font-semibold hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={
+                    documents.length === 0
+                      ? "Send a proposal first to generate a quote"
+                      : "View latest quote"
+                  }
+                >
                   Quote
                 </button>
               </div>
@@ -1075,83 +1000,11 @@ const LeadEdit = () => {
             </div>
           </div>
 
-          {/* Documents Card */}
-          <div className="bg-white rounded-[20px] p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
-            <div className="flex justify-between items-center mb-6">
-              <h3 className="text-[17px] font-bold text-[#1e293b]">
-                Documents
-              </h3>
-              <span className="px-2.5 py-1 bg-[#eff6ff] text-[#1d4ed8] text-[10px] font-bold tracking-wider rounded-md">
-                3 NEW
-              </span>
-            </div>
-
-            <div className="space-y-3.5">
-              {/* Doc Item 1 */}
-              <div className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-[#bae6fd] hover:bg-[#f8fafc] transition-all group">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 bg-[#eff6ff] text-[#3b82f6] rounded-[10px] flex items-center justify-center shrink-0">
-                    <FiFileText size={18} />
-                  </div>
-                  <div className="truncate pr-2">
-                    <p className="text-[13px] font-bold text-[#1e293b] truncate leading-tight mb-1">
-                      Project_Quotation_v2.pdf
-                    </p>
-                    <p className="text-[11px] font-medium text-gray-400">
-                      PDF • 2.4 MB
-                    </p>
-                  </div>
-                </div>
-                <button className="text-gray-400 group-hover:text-[#3b82f6] transition-colors">
-                  <FiDownload size={18} />
-                </button>
-              </div>
-
-              {/* Doc Item 2 */}
-              <div className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-[#fed7aa] hover:bg-[#fff7ed] transition-all group">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 bg-[#ffedd5] text-[#ea580c] rounded-[10px] flex items-center justify-center shrink-0">
-                    <FiLayers size={18} />
-                  </div>
-                  <div className="truncate pr-2">
-                    <p className="text-[13px] font-bold text-[#1e293b] truncate leading-tight mb-1">
-                      Master_Floor_Plans.dwg
-                    </p>
-                    <p className="text-[11px] font-medium text-gray-400">
-                      DWG • 18.2 MB
-                    </p>
-                  </div>
-                </div>
-                <button className="text-gray-400 group-hover:text-[#ea580c] transition-colors">
-                  <FiDownload size={18} />
-                </button>
-              </div>
-
-              {/* Doc Item 3 */}
-              <div className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-[#e0e7ff] hover:bg-[#eef2ff] transition-all group">
-                <div className="flex items-center gap-3.5">
-                  <div className="w-10 h-10 bg-[#e0e7ff] text-[#4f46e5] rounded-[10px] flex items-center justify-center shrink-0">
-                    <FiEdit2 size={18} />
-                  </div>
-                  <div className="truncate pr-2">
-                    <p className="text-[13px] font-bold text-[#1e293b] truncate leading-tight mb-1">
-                      Design_Presentation_Final...
-                    </p>
-                    <p className="text-[11px] font-medium text-gray-400">
-                      PPTX • 45.1 MB
-                    </p>
-                  </div>
-                </div>
-                <button className="text-gray-400 group-hover:text-[#4f46e5] transition-colors">
-                  <FiDownload size={18} />
-                </button>
-              </div>
-            </div>
-
-            <button className="w-full mt-6 text-[12px] font-bold text-[#001552] flex items-center justify-center gap-1.5 hover:opacity-80 transition-opacity">
-              View All Shared Files <FiArrowRight size={14} />
-            </button>
-          </div>
+          {/* Documents Card — auto-populated when a proposal is sent */}
+          <DocumentsCard
+            documents={documents}
+            onOpen={(doc) => setPreviewDoc(doc)}
+          />
         </div>
       </div>
 
@@ -1161,6 +1014,75 @@ const LeadEdit = () => {
           lead={lead}
           onClose={() => setShowConvertForm(false)}
           onConvert={handleConvert}
+        />
+      )}
+
+      {/* Send / Resend Proposal — quote builder + email + auto-save to Documents */}
+      {showProposalModal && (
+        <QuoteModal
+          parentId={lead.proposalId}
+          parentType="lead"
+          mode="proposal"
+          recipient={{
+            name: lead.clientName,
+            email: lead.email,
+            phone: lead.phone,
+          }}
+          defaultPropertyType={lead.propertyType || lead.location}
+          initialQuote={
+            isPipelineStep(lead.status) &&
+            getStepIndex(lead.status) >= getStepIndex("Proposal")
+              ? getLatestQuoteForParent(lead.proposalId)
+              : null
+          }
+          presetData={{
+            presetKey: lead.quotePreset,
+            propertyType: lead.propertyType || lead.location,
+            sizeRange: lead.quoteSizeRange,
+            scopeItems: lead.quoteScopeItems,
+            inclusions: lead.quoteInclusions,
+            exclusions: lead.quoteExclusions,
+            validityDays: lead.quoteValidityDays,
+            notes: lead.quoteNotes,
+          }}
+          onClose={() => setShowProposalModal(false)}
+          onSent={({ to, subject, body, total, quote }) => {
+            // First send moves Qualified → Proposal. Subsequent sends keep
+            // the current status (Proposal, Negotiation).
+            const next =
+              isPipelineStep(lead.status) &&
+              getStepIndex(lead.status) < getStepIndex("Proposal")
+                ? "Proposal"
+                : lead.status;
+            if (next !== lead.status) {
+              transitionStatus(next);
+            }
+            // Single email-style activity entry — keeps the existing
+            // "lead has emailed proposal" check working for the Projects
+            // list, while linking to the saved quote.
+            setActivity(
+              appendActivity(lead.proposalId, {
+                type: "email",
+                to,
+                subject,
+                body,
+                quoteId: quote?.quoteId,
+                total,
+              }),
+            );
+            saveQuoteDocument(lead.proposalId, quote);
+            window.dispatchEvent(new Event("leadDataChanged"));
+          }}
+        />
+      )}
+
+      {/* View-only preview — opened from the Quote header button or any
+          row in the Documents card. Read-only with a Download action only. */}
+      {previewDoc && (
+        <QuotePreviewModal
+          quote={previewDoc.snapshot}
+          fileName={previewDoc.fileName}
+          onClose={() => setPreviewDoc(null)}
         />
       )}
 
@@ -1229,41 +1151,6 @@ const LeadEdit = () => {
           onConfirm={(reason, note) => {
             transitionStatus("Lost", { lostReason: reason, lostNote: note });
             setShowLostModal(false);
-          }}
-        />
-      )}
-
-      {/* Email Proposal Modal */}
-      {showEmailModal && (
-        <EmailProposalModal
-          lead={lead}
-          isResend={
-            isPipelineStep(lead.status) &&
-            getStepIndex(lead.status) >= getStepIndex("Proposal")
-          }
-          onClose={() => setShowEmailModal(false)}
-          onSend={({ to, subject, body, attachments }) => {
-            // First send moves the deal to Proposal stage; subsequent sends
-            // stay in whatever stage they were in (e.g. resending while
-            // already in Proposal/Negotiation just logs an activity).
-            const next =
-              isPipelineStep(lead.status) &&
-              getStepIndex(lead.status) < getStepIndex("Proposal")
-                ? "Proposal"
-                : lead.status;
-            if (next !== lead.status) {
-              transitionStatus(next);
-            }
-            setActivity(
-              appendActivity(lead.proposalId, {
-                type: "email",
-                to,
-                subject,
-                body,
-                attachments,
-              }),
-            );
-            setShowEmailModal(false);
           }}
         />
       )}

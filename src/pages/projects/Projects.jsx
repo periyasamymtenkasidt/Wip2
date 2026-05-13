@@ -38,6 +38,8 @@ const summarizeActivity = (entry) => {
       return `Milestone: ${entry.milestoneName} ${entry.action}`;
     case "status":
       return `Status → ${entry.to}`;
+    case "quote":
+      return `Quote ${entry.quoteId || ""}: ${entry.subject || "sent"}`.trim();
     default:
       return entry.type;
   }
@@ -211,7 +213,6 @@ const Projects = () => {
               "Proposal",
               "Negotiation",
               "Won",
-              "Converted",
               "Lost",
               "On Hold",
             ],

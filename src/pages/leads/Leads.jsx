@@ -14,11 +14,11 @@ const SUB_TABS = {
 };
 
 // Sub-tab → status mapping. Mirrors the standard pipeline: raw inquiries,
-// active deals being worked, closed-won (incl. converted), and lost/dropped.
+// active deals being worked, closed-won (client created), and lost/dropped.
 const MOCK_STATUSES = {
   "0-0": ["Inquiry"],
   "0-1": ["Qualified", "Proposal", "Negotiation", "On Hold"],
-  "0-2": ["Won", "Converted"],
+  "0-2": ["Won"],
   "0-3": ["Lost"],
 };
 
@@ -163,6 +163,10 @@ const Leads = () => {
       propertyType: formData.propertyType,
       architecturalNotes: formData.architecturalNotes,
       inquirySource: formData.inquirySource,
+      // Property preset captured at inquiry — used as the starting
+      // template when the Send Proposal flow opens later.
+      quotePreset: formData.quotePreset,
+      quoteSizeRange: formData.quoteSizeRange,
     };
 
     const saved = JSON.parse(localStorage.getItem("newLeadsData") || "[]");
@@ -295,7 +299,6 @@ const Leads = () => {
                     "Proposal",
                     "Negotiation",
                     "Won",
-                    "Converted",
                     "On Hold",
                     "Lost",
                   ],
