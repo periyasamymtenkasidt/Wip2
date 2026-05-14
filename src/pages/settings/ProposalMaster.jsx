@@ -38,6 +38,7 @@ import {
   Info,
   Wand2,
   Keyboard,
+  Pencil,
 } from "lucide-react";
 import {
   getMaster,
@@ -50,6 +51,7 @@ import {
 import { formatAmount } from "../../utils/formatAmount";
 import ItemFormModal from "../../components/ItemFormModal";
 import { computeLibraryItemAmount } from "../../data/itemLibrary";
+import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
 
 const blankScope = () => ({
   area: "",
@@ -60,7 +62,8 @@ const blankScope = () => ({
 
 const blankPreset = () => ({
   label: "New Preset",
-  propertyType: "",
+  propertyType: "Apartment",
+  propertyTypes: ["Apartment"],
   sizeRange: "",
   scopeItems: [],
   inclusions: [],
@@ -167,6 +170,9 @@ const ProposalMaster = () => {
   const [showShortcuts, setShowShortcuts] = useState(false);
   // Whether the shared Item Form modal is open for adding a new scope row.
   const [scopeFormOpen, setScopeFormOpen] = useState(false);
+  // Rename mode for the active preset's key.
+  const [renaming, setRenaming] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
 
   const presetKeys = Object.keys(master);
   const active = master[activeKey];
@@ -383,6 +389,40 @@ const ProposalMaster = () => {
     setNewPresetKey("");
     setShowAddPreset(false);
     showToast(`Preset "${trimmed}" created`, "success");
+  };
+
+  // Rename the active preset's key. Rebuilds the master object preserving
+  // insertion order so the preset rail doesn't jump around after rename.
+  const handleRenamePreset = () => {
+    const trimmed = renameValue.trim();
+    if (!trimmed) {
+      showToast("Name can't be empty", "error");
+      return;
+    }
+    if (trimmed === activeKey) {
+      setRenaming(false);
+      return;
+    }
+    if (master[trimmed]) {
+      showToast("A preset with that name already exists", "error");
+      return;
+    }
+    setMaster((prev) => {
+      const next = {};
+      for (const k of Object.keys(prev)) {
+        next[k === activeKey ? trimmed : k] = prev[k];
+      }
+      return next;
+    });
+    setActiveKey(trimmed);
+    setRenaming(false);
+    setRenameValue("");
+    showToast(`Renamed to "${trimmed}"`, "success");
+  };
+
+  const startRename = () => {
+    setRenameValue(activeKey);
+    setRenaming(true);
   };
 
   const handleDuplicatePreset = () => {
@@ -746,49 +786,90 @@ const ProposalMaster = () => {
             <section className="relative bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-br from-select-blue/8 via-active-bg/40 to-transparent pointer-events-none" />
               <div className="relative px-5 py-4 border-b border-bordergray flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-select-blue bg-white/80 backdrop-blur px-2 py-1 rounded-md shrink-0 border border-select-blue/20">
-                    <Tag size={10} /> {activeKey}
-                  </span>
-                  <span className="text-[12px] text-text-muted truncate">
-                    {active.label}
-                  </span>
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  {renaming ? (
+                    <div className="flex items-center gap-1.5 flex-1">
+                      <Tag size={11} className="text-select-blue shrink-0" />
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleRenamePreset();
+                          if (e.key === "Escape") {
+                            setRenaming(false);
+                            setRenameValue("");
+                          }
+                        }}
+                        autoFocus
+                        placeholder="e.g. 2BHK Premium"
+                        className="bg-white border border-select-blue/40 rounded-md px-2 py-1 text-[12px] font-bold uppercase tracking-widest text-select-blue focus:outline-none focus:ring-2 focus:ring-select-blue/20 w-44"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRenamePreset}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md bg-select-blue text-white text-[11px] font-semibold hover:bg-primary"
+                      >
+                        <Check size={11} /> Save
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRenaming(false);
+                          setRenameValue("");
+                        }}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md border border-bordergray bg-white text-[11px] font-semibold text-text-muted hover:bg-bg-soft"
+                      >
+                        <X size={11} /> Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold tracking-widest uppercase text-select-blue bg-white/80 backdrop-blur px-2 py-1 rounded-md shrink-0 border border-select-blue/20">
+                        <Tag size={10} /> {activeKey}
+                      </span>
+                      <span className="text-[12px] text-text-muted truncate">
+                        {active.label}
+                      </span>
+                    </>
+                  )}
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleDuplicatePreset}
-                    title="Duplicate this preset"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-bordergray bg-white text-[11px] font-semibold text-text-muted hover:bg-bg-soft hover:text-textcolor"
-                  >
-                    <Copy size={12} /> Duplicate
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleDeletePreset}
-                    title="Delete this preset"
-                    className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-[11px] font-semibold text-red-500 hover:bg-red-50"
-                  >
-                    <Trash2 size={12} /> Delete
-                  </button>
-                </div>
+                {!renaming && (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={startRename}
+                      title="Rename this preset"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-bordergray bg-white text-[11px] font-semibold text-text-muted hover:bg-bg-soft hover:text-textcolor"
+                    >
+                      <Pencil size={12} /> Rename
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDuplicatePreset}
+                      title="Duplicate this preset"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-bordergray bg-white text-[11px] font-semibold text-text-muted hover:bg-bg-soft hover:text-textcolor"
+                    >
+                      <Copy size={12} /> Duplicate
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleDeletePreset}
+                      title="Delete this preset"
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-red-200 bg-white text-[11px] font-semibold text-red-500 hover:bg-red-50"
+                    >
+                      <Trash2 size={12} /> Delete
+                    </button>
+                  </div>
+                )}
               </div>
 
-              <div className="relative p-5 grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="relative p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Field icon={<Tag size={11} />} label="Label" hint="Shown on the proposal cover">
                   <input
                     type="text"
                     value={active.label}
                     onChange={(e) => updateActive({ label: e.target.value })}
-                    className={inputBase}
-                  />
-                </Field>
-                <Field icon={<Home size={11} />} label="Property Type">
-                  <input
-                    type="text"
-                    value={active.propertyType}
-                    onChange={(e) => updateActive({ propertyType: e.target.value })}
-                    placeholder="Apartment / Villa…"
                     className={inputBase}
                   />
                 </Field>
@@ -799,6 +880,26 @@ const ProposalMaster = () => {
                     onChange={(e) => updateActive({ sizeRange: e.target.value })}
                     placeholder="e.g. 800–1100 sq ft"
                     className={inputBase}
+                  />
+                </Field>
+              </div>
+
+              <div className="relative px-5 pb-5">
+                <Field
+                  icon={<Home size={11} />}
+                  label="Applies To"
+                  hint="Tick the property types · adjust × multiplier for premium / budget pricing"
+                >
+                  <PropertyTypeChips
+                    selected={active.propertyTypes || []}
+                    multipliers={active.propertyTypeMultipliers || {}}
+                    onChange={(next) =>
+                      updateActive({
+                        propertyTypes: next.types,
+                        propertyType: next.types[0] || "",
+                        propertyTypeMultipliers: next.multipliers,
+                      })
+                    }
                   />
                 </Field>
               </div>
@@ -1227,6 +1328,87 @@ const AmountInput = ({ value, onChange, pct }) => {
           {pct}%
         </span>
       )}
+    </div>
+  );
+};
+
+// Multi-select chip group for the preset's applicable property types.
+// Each selected chip exposes a small "× multiplier" input so the same
+// scope can carry different pricing per property type (penthouse premium,
+// studio budget). 1.0 = baseline. At least one must remain selected.
+const PropertyTypeChips = ({ selected, multipliers, onChange }) => {
+  const toggle = (type) => {
+    const isOn = selected.includes(type);
+    if (isOn) {
+      if (selected.length === 1) return;
+      const nextTypes = selected.filter((t) => t !== type);
+      const nextMult = { ...multipliers };
+      delete nextMult[type];
+      onChange({ types: nextTypes, multipliers: nextMult });
+    } else {
+      onChange({
+        types: [...selected, type],
+        multipliers: { ...multipliers, [type]: multipliers[type] ?? 1 },
+      });
+    }
+  };
+
+  const setMultiplier = (type, raw) => {
+    const parsed = parseFloat(raw);
+    const next = !isFinite(parsed) || parsed <= 0 ? 1 : parsed;
+    onChange({
+      types: selected,
+      multipliers: { ...multipliers, [type]: next },
+    });
+  };
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {PROPERTY_TYPES.map((type) => {
+        const isOn = selected.includes(type);
+        const m = multipliers[type] ?? 1;
+        return (
+          <div
+            key={type}
+            className={`flex items-center rounded-lg border overflow-hidden transition-all ${
+              isOn
+                ? "border-select-blue shadow-sm"
+                : "border-bordergray"
+            }`}
+          >
+            <button
+              type="button"
+              onClick={() => toggle(type)}
+              className={`flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold transition-all ${
+                isOn
+                  ? "bg-select-blue text-white"
+                  : "bg-white text-text-muted hover:text-select-blue"
+              }`}
+            >
+              {isOn && <Check size={10} strokeWidth={3} />}
+              {type}
+            </button>
+            {isOn && (
+              <div className="flex items-center gap-0.5 px-1.5 py-1 bg-white border-l border-select-blue/30">
+                <span className="text-[10px] font-semibold text-text-subtle">
+                  ×
+                </span>
+                <input
+                  type="number"
+                  step="0.05"
+                  min="0.1"
+                  value={m}
+                  onChange={(e) => setMultiplier(type, e.target.value)}
+                  title="Price multiplier vs baseline (1.0 = same)"
+                  className={`w-11 text-[11px] font-bold tabular-nums text-textcolor bg-transparent focus:outline-none ${
+                    m !== 1 ? "text-select-blue" : ""
+                  }`}
+                />
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 };

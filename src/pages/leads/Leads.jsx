@@ -159,7 +159,6 @@ const Leads = () => {
         ? formData.processionDate.split("-").reverse().join(".")
         : "",
       // All editable fields stored with consistent keys
-      buildUpArea: formData.buildUpArea,
       propertyType: formData.propertyType,
       architecturalNotes: formData.architecturalNotes,
       inquirySource: formData.inquirySource,

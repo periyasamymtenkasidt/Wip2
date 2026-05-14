@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   FiUserPlus,
   FiPhone,
@@ -12,93 +12,60 @@ import {
   FiAlertTriangle,
 } from "react-icons/fi";
 import { HiOutlineDotsHorizontal } from "react-icons/hi";
+import { TableData } from "../../data/TableData";
+import { ClientTableData } from "../../data/ClientTableData";
+import { listLibrary } from "../../data/itemLibrary";
 
-// ─── Mock data ───────────────────────────────────────────────────────────────
-const STATS = [
-  {
-    label: "New Leads",
-    value: "1,284",
-    sub: "Incoming leads",
-    badge: { text: "45% New", tone: "emerald" },
-    accent: "bg-emerald-400",
-  },
-  {
-    label: "Contacted",
-    value: "942",
-    sub: "Initial response",
-    badge: { text: "88% Drop Off", tone: "sky" },
-    accent: "bg-sky-400",
-  },
-  {
-    label: "Site Visit",
-    value: "318",
-    sub: "Confirmed visits",
-    badge: { text: "45% Drop Off", tone: "violet" },
-    accent: "bg-violet-400",
-  },
-  {
-    label: "Quotation",
-    value: "156",
-    sub: "Proposals sent",
-    badge: { text: "12% Drop Off", tone: "amber" },
-    accent: "bg-amber-300",
-  },
-  {
-    label: "Converted",
-    value: "84",
-    sub: "Closed deals",
-    badge: null,
-    accent: "bg-purple-500",
-  },
-  {
-    label: "Pending",
-    value: "12",
-    sub: "Pending payments",
-    badge: null,
-    accent: "bg-rose-300",
-  },
-];
+// ─── Data merge helpers (mock + localStorage) ────────────────────────────────
+function getMergedLeads() {
+  let newLeads = [];
+  let deleted = [];
+  try {
+    newLeads = JSON.parse(localStorage.getItem("newLeadsData") || "[]");
+  } catch { /* ignore — fall back to empty list */ }
+  try {
+    deleted = JSON.parse(localStorage.getItem("deletedLeads") || "[]");
+  } catch { /* ignore — fall back to empty list */ }
+  const overridden = new Set(newLeads.map((l) => l.proposalId));
+  return [...newLeads, ...TableData.filter((i) => !overridden.has(i.proposalId))]
+    .filter((i) => !deleted.includes(i.proposalId));
+}
 
+function getMergedClients() {
+  let newClients = [];
+  let deleted = [];
+  try {
+    newClients = JSON.parse(localStorage.getItem("newClientsData") || "[]");
+  } catch { /* ignore — fall back to empty list */ }
+  try {
+    deleted = JSON.parse(localStorage.getItem("deletedClients") || "[]");
+  } catch { /* ignore — fall back to empty list */ }
+  const overridden = new Set(newClients.map((c) => c.clientID));
+  return [...newClients, ...ClientTableData.filter((c) => !overridden.has(c.clientID))]
+    .filter((c) => !deleted.includes(c.clientID));
+}
+
+// Parse budgets like "₹60-70L" or "₹1-1.2Cr" into lakhs (lower bound).
+const parseBudgetLakhs = (str = "") => {
+  const m = str.match(/([\d.]+)/);
+  if (!m) return 0;
+  const n = parseFloat(m[1]);
+  return /cr/i.test(str) ? n * 100 : n;
+};
+
+const formatLakhs = (lakhs) => {
+  if (lakhs >= 100) return `₹${(lakhs / 100).toFixed(2)}Cr`;
+  return `₹${lakhs.toFixed(1)}L`;
+};
+
+// ─── Tone palettes (kept from original design) ───────────────────────────────
 const TONE_BG = {
   emerald: "bg-emerald-400 text-white",
   sky: "bg-sky-400 text-white",
   violet: "bg-violet-400 text-white",
   amber: "bg-amber-300 text-white",
+  rose: "bg-rose-400 text-white",
 };
-
-const DISTRIBUTION = [
-  { label: "Referral", pct: 30, color: "#10b981" },
-  { label: "Walk-in", pct: 15, color: "#ef4444" },
-  { label: "Website", pct: 35, color: "#3b82f6" },
-  { label: "Social", pct: 20, color: "#8b5cf6" },
-];
-
-const ACTIVITY = [
-  {
-    time: "09:30 AM",
-    title: "Site Visit · Azure Penthouse",
-    sub: "Walkthrough completed with Mr. Anand",
-    tone: "emerald",
-  },
-  {
-    time: "11:15 AM",
-    title: "Supplier Meeting · Amaca",
-    sub: "Reviewed marble shipment timelines",
-    tone: "sky",
-  },
-  {
-    time: "01:45 PM",
-    title: "Project Review · The Gilded Loft",
-    sub: "Design sign-off pending from client",
-    tone: "violet",
-  },
-  {
-    time: "04:30 PM",
-    title: "Contract Signed · Peak Villa",
-    sub: "Initial booking token released",
-    tone: "amber",
-  },
-];
 
 const TONE_DOT = {
   emerald: "bg-emerald-500",
@@ -107,64 +74,24 @@ const TONE_DOT = {
   amber: "bg-amber-400",
 };
 
-const PIPELINE = [
-  { label: "New", value: "32 Leads", icon: FiUserPlus, color: "#537BCC", bg: "#e8efff" },
-  { label: "Contacted", value: "18 Leads", icon: FiPhone, color: "#1a2b4d", bg: "#e2e7f2" },
-  { label: "Site Visit", value: "9 Leads", icon: FiMapPin, color: "#54ab4e", bg: "#e6f4e3" },
-  { label: "Quotation", value: "14 Leads", icon: FiFileText, color: "#3B1CEB", bg: "#e7e2fe" },
-  { label: "Converted", value: "42 Leads", icon: FiCheckCircle, color: "#008000", bg: "#e0f5e0" },
-  { label: "Lost", value: "12% Leads", icon: FiAlertTriangle, color: "#ba1a1a", bg: "#fae0dc" },
+// Activity feed stays static — there is no rich source in the data files yet.
+const ACTIVITY = [
+  { time: "09:30 AM", title: "Site Visit · Azure Penthouse", sub: "Walkthrough completed with Mr. Anand", tone: "emerald" },
+  { time: "11:15 AM", title: "Supplier Meeting · Amaca", sub: "Reviewed marble shipment timelines", tone: "sky" },
+  { time: "01:45 PM", title: "Project Review · The Gilded Loft", sub: "Design sign-off pending from client", tone: "violet" },
+  { time: "04:30 PM", title: "Contract Signed · Peak Villa", sub: "Initial booking token released", tone: "amber" },
 ];
 
 const INVOICE_TABS = ["Pending", "Completed", "Overdue"];
-
-const INVOICES = [
-  {
-    title: "PAID INVOICES",
-    amount: "$84,200.00",
-    sub: "12 transactions this week",
-    accent: "border-emerald-400",
-    subColor: "text-emerald-500",
-    trend: "up",
-  },
-  {
-    title: "RECENT RECEIPTS",
-    amount: "$18,450.00",
-    sub: "Processing receipts",
-    accent: "border-violet-500",
-    subColor: "text-violet-500",
-    trend: "up",
-  },
-  {
-    title: "PENDING AMOUNT",
-    amount: "$5,210.00",
-    sub: "Awaiting client payments",
-    accent: "border-rose-400",
-    subColor: "text-rose-500",
-    trend: "down",
-  },
-];
-
-const MATERIALS = [
-  { code: "STK-013", name: "Carrara Marble", note: "In stock · Vendor A", status: "in", accent: "border-emerald-400" },
-  { code: "STK-014", name: "Gold Satin Paint", note: "Out of stock", status: "out", accent: "border-rose-400" },
-  { code: "STK-015", name: "European Oak", note: "In stock · Vendor B", status: "in", accent: "border-amber-400" },
-];
-
-const PROJECTS = [
-  { code: "PRJ-101", name: "The Obsidian Villa", target: "Aug 30", status: "On Track" },
-  { code: "PRJ-102", name: "Gold Satin Paint Project", target: "Aug 30", status: "On Track" },
-  { code: "PRJ-103", name: "Azure Sky Loft", target: "Aug 30", status: "On Track" },
-  { code: "PRJ-104", name: "Project Phoenix Refurbishment", target: "Aug 30", status: "On Track" },
-];
 
 // ─── Donut chart (SVG) ───────────────────────────────────────────────────────
 const Donut = ({ data, size = 200, stroke = 24 }) => {
   const r = (size - stroke) / 2;
   const c = 2 * Math.PI * r;
+  const total = data.reduce((s, d) => s + d.pct, 0) || 1;
   const segments = data.reduce(
     (acc, seg) => {
-      const len = (seg.pct / 100) * c;
+      const len = (seg.pct / total) * c;
       acc.items.push({ ...seg, len, offset: acc.cursor });
       acc.cursor += len;
       return acc;
@@ -213,9 +140,9 @@ const StatCard = ({ stat }) => (
   </div>
 );
 
-const LeadDistribution = () => {
+const LeadDistribution = ({ distribution, total }) => {
   const [view, setView] = useState("Monthly");
-  const total = DISTRIBUTION.reduce((s, d) => s + d.pct, 0);
+  const sum = distribution.reduce((s, d) => s + d.pct, 0) || 1;
 
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5 h-full">
@@ -223,7 +150,7 @@ const LeadDistribution = () => {
         <div>
           <h3 className="text-[16px] font-semibold text-text">Lead Distribution</h3>
           <p className="text-[11px] text-text-subtle">
-            Performance by acquisition channel
+            Performance by project type
           </p>
         </div>
         <div className="flex bg-bg-soft rounded-xl p-1 gap-1">
@@ -232,9 +159,7 @@ const LeadDistribution = () => {
               key={v}
               onClick={() => setView(v)}
               className={`px-3 py-1 text-[11px] rounded-lg transition-colors ${
-                view === v
-                  ? "bg-primary text-white"
-                  : "text-text-muted hover:text-text"
+                view === v ? "bg-primary text-white" : "text-text-muted hover:text-text"
               }`}
             >
               {v}
@@ -245,25 +170,22 @@ const LeadDistribution = () => {
 
       <div className="flex items-center gap-6 mt-4">
         <div className="relative shrink-0">
-          <Donut data={DISTRIBUTION} size={200} stroke={24} />
+          <Donut data={distribution} size={200} stroke={24} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <p className="text-[10px] text-text-subtle font-medium">Total</p>
-            <p className="text-2xl font-bold text-text">1,284</p>
+            <p className="text-2xl font-bold text-text">{total.toLocaleString()}</p>
           </div>
         </div>
         <div className="flex-1 space-y-3">
-          {DISTRIBUTION.map((d) => (
+          {distribution.map((d) => (
             <div key={d.label} className="flex items-center gap-3">
-              <span
-                className="w-1 h-8 rounded-full"
-                style={{ background: d.color }}
-              />
+              <span className="w-1 h-8 rounded-full" style={{ background: d.color }} />
               <div className="flex-1">
                 <p className="text-[12px] font-medium text-text">{d.label}</p>
                 <div className="h-1.5 bg-bg-soft rounded-full mt-1 overflow-hidden">
                   <div
                     className="h-full rounded-full"
-                    style={{ width: `${(d.pct / total) * 100}%`, background: d.color }}
+                    style={{ width: `${(d.pct / sum) * 100}%`, background: d.color }}
                   />
                 </div>
               </div>
@@ -291,14 +213,10 @@ const DailyActivity = () => (
       <ul className="space-y-4">
         {ACTIVITY.map((a, i) => (
           <li key={i} className="relative">
-            <span
-              className={`absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${TONE_DOT[a.tone]}`}
-            />
+            <span className={`absolute -left-[18px] top-1.5 w-2.5 h-2.5 rounded-full ring-4 ring-white ${TONE_DOT[a.tone]}`} />
             <div className="flex items-baseline justify-between gap-2">
               <p className="text-[12px] font-semibold text-text">{a.title}</p>
-              <span className="text-[10px] text-text-subtle whitespace-nowrap">
-                {a.time}
-              </span>
+              <span className="text-[10px] text-text-subtle whitespace-nowrap">{a.time}</span>
             </div>
             <p className="text-[11px] text-text-muted mt-0.5">{a.sub}</p>
           </li>
@@ -326,27 +244,25 @@ const PipelineStage = ({ stage }) => {
   );
 };
 
-const ActivePipeline = () => (
+const ActivePipeline = ({ pipeline }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5">
     <h3 className="text-[16px] font-semibold text-primary mb-4">
       Active Lead Pipeline
     </h3>
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-      {PIPELINE.map((s) => (
+      {pipeline.map((s) => (
         <PipelineStage key={s.label} stage={s} />
       ))}
     </div>
   </div>
 );
 
-const InvoiceManagement = () => {
+const InvoiceManagement = ({ invoices }) => {
   const [tab, setTab] = useState("Pending");
   return (
     <div className="bg-white rounded-2xl shadow-sm p-5">
       <div className="flex items-center justify-between mb-5">
-        <h3 className="text-[16px] font-semibold text-text">
-          Invoice Management
-        </h3>
+        <h3 className="text-[16px] font-semibold text-text">Invoice Management</h3>
         <div className="flex bg-bg-soft rounded-2xl p-1 gap-1">
           {INVOICE_TABS.map((t) => (
             <button
@@ -364,7 +280,7 @@ const InvoiceManagement = () => {
         </div>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {INVOICES.map((inv) => (
+        {invoices.map((inv) => (
           <div
             key={inv.title}
             className={`bg-bg-soft rounded-2xl border-l-4 ${inv.accent} p-5 flex flex-col gap-1`}
@@ -388,13 +304,11 @@ const InvoiceManagement = () => {
   );
 };
 
-const MaterialInventory = () => (
+const MaterialInventory = ({ materials }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5 h-full">
-    <h3 className="text-[16px] font-semibold text-text mb-4">
-      Material Inventory
-    </h3>
+    <h3 className="text-[16px] font-semibold text-text mb-4">Material Inventory</h3>
     <div className="space-y-3">
-      {MATERIALS.map((m) => (
+      {materials.map((m) => (
         <div
           key={m.code}
           className={`flex items-center gap-3 bg-bg-soft rounded-xl border-l-4 ${m.accent} px-3.5 py-3`}
@@ -403,12 +317,8 @@ const MaterialInventory = () => (
             <FiPackage size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-mono tracking-wider text-text-subtle">
-              {m.code}
-            </p>
-            <p className="text-[13px] font-bold text-text truncate">
-              {m.name}
-            </p>
+            <p className="text-[10px] font-mono tracking-wider text-text-subtle">{m.code}</p>
+            <p className="text-[13px] font-bold text-text truncate">{m.name}</p>
             <p className="text-[10px] text-text-muted">{m.note}</p>
           </div>
           <span
@@ -426,27 +336,18 @@ const MaterialInventory = () => (
   </div>
 );
 
-const ProjectStatus = () => (
+const ProjectStatus = ({ projects }) => (
   <div className="bg-white rounded-2xl shadow-sm p-5 h-full">
-    <h3 className="text-[16px] font-semibold text-text mb-4">
-      Project Status &amp; Timeline
-    </h3>
+    <h3 className="text-[16px] font-semibold text-text mb-4">Project Status &amp; Timeline</h3>
     <div className="space-y-3">
-      {PROJECTS.map((p) => (
-        <div
-          key={p.code}
-          className="flex items-center gap-3 bg-bg-soft rounded-xl px-3.5 py-3"
-        >
+      {projects.map((p) => (
+        <div key={p.code} className="flex items-center gap-3 bg-bg-soft rounded-xl px-3.5 py-3">
           <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-text-subtle shrink-0">
             <FiFileText size={16} />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-mono tracking-wider text-text-subtle">
-              {p.code}
-            </p>
-            <p className="text-[13px] font-bold text-text truncate">
-              {p.name}
-            </p>
+            <p className="text-[10px] font-mono tracking-wider text-text-subtle">{p.code}</p>
+            <p className="text-[13px] font-bold text-text truncate">{p.name}</p>
             <p className="text-[10px] text-text-muted flex items-center gap-1 mt-0.5">
               <FiCalendar size={10} /> Target {p.target}
             </p>
@@ -462,35 +363,201 @@ const ProjectStatus = () => (
 
 // ─── Main ────────────────────────────────────────────────────────────────────
 const Dashboard = () => {
+  const data = useMemo(() => {
+    const leads = getMergedLeads();
+    const clients = getMergedClients();
+    const library = listLibrary();
+
+    const countStatus = (status) =>
+      leads.filter((l) => l.status?.toLowerCase() === status.toLowerCase()).length;
+
+    const inquiry = countStatus("Inquiry");
+    const qualified = countStatus("Qualified");
+    const proposal = countStatus("Proposal");
+    const negotiation = countStatus("Negotiation");
+    const won = countStatus("Won");
+    const lost = countStatus("Lost");
+    const onHold = countStatus("On Hold");
+
+    const dropOff = (from, to) =>
+      from > 0 ? Math.round(((from - to) / from) * 100) : 0;
+
+    // Stats cards — aligned to actual pipeline statuses + drop-off badges
+    const stats = [
+      {
+        label: "Inquiry",
+        value: inquiry.toLocaleString(),
+        sub: "Incoming leads",
+        badge: { text: `${leads.length} Total`, tone: "emerald" },
+        accent: "bg-emerald-400",
+      },
+      {
+        label: "Qualified",
+        value: qualified.toLocaleString(),
+        sub: "Validated leads",
+        badge: { text: `${dropOff(inquiry, qualified)}% Drop Off`, tone: "sky" },
+        accent: "bg-sky-400",
+      },
+      {
+        label: "Proposal",
+        value: proposal.toLocaleString(),
+        sub: "Quotations sent",
+        badge: { text: `${dropOff(qualified, proposal)}% Drop Off`, tone: "violet" },
+        accent: "bg-violet-400",
+      },
+      {
+        label: "Negotiation",
+        value: negotiation.toLocaleString(),
+        sub: "Active deals",
+        badge: { text: `${dropOff(proposal, negotiation)}% Drop Off`, tone: "amber" },
+        accent: "bg-amber-300",
+      },
+      {
+        label: "Converted",
+        value: won.toLocaleString(),
+        sub: "Closed deals",
+        badge: null,
+        accent: "bg-purple-500",
+      },
+      {
+        label: "Lost / Hold",
+        value: (lost + onHold).toLocaleString(),
+        sub: `${lost} lost · ${onHold} on hold`,
+        badge: null,
+        accent: "bg-rose-300",
+      },
+    ];
+
+    // Lead distribution — by project location, top 4
+    const palette = ["#10b981", "#3b82f6", "#8b5cf6", "#ef4444"];
+    const locCounts = leads.reduce((acc, l) => {
+      const key = l.location || "Other";
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const totalForDistribution = leads.length || 1;
+    const topLocations = Object.entries(locCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 4);
+    const distribution = topLocations.map(([label, count], i) => ({
+      label,
+      pct: Math.round((count / totalForDistribution) * 100),
+      color: palette[i],
+    }));
+
+    // Active pipeline strip — same status counts, with icons
+    const pipeline = [
+      { label: "Inquiry", value: `${inquiry} Leads`, icon: FiUserPlus, color: "#537BCC" },
+      { label: "Qualified", value: `${qualified} Leads`, icon: FiPhone, color: "#1a2b4d" },
+      { label: "Proposal", value: `${proposal} Leads`, icon: FiFileText, color: "#3B1CEB" },
+      { label: "Negotiation", value: `${negotiation} Leads`, icon: FiMapPin, color: "#54ab4e" },
+      { label: "Converted", value: `${won} Leads`, icon: FiCheckCircle, color: "#008000" },
+      { label: "Lost", value: `${lost} Leads`, icon: FiAlertTriangle, color: "#ba1a1a" },
+    ];
+
+    // Invoice management — derived from client paymentStatus + budgets
+    const sumBudgets = (status) =>
+      clients
+        .filter((c) => c.paymentStatus === status)
+        .reduce((s, c) => s + parseBudgetLakhs(c.budget), 0);
+
+    const paidAmount = sumBudgets("completed");
+    const pendingAmount = sumBudgets("pending");
+    const failedAmount = sumBudgets("failed");
+
+    const countPayment = (status) =>
+      clients.filter((c) => c.paymentStatus === status).length;
+
+    const invoices = [
+      {
+        title: "PAID INVOICES",
+        amount: formatLakhs(paidAmount),
+        sub: `${countPayment("completed")} clients paid in full`,
+        accent: "border-emerald-400",
+        subColor: "text-emerald-500",
+        trend: "up",
+      },
+      {
+        title: "PENDING AMOUNT",
+        amount: formatLakhs(pendingAmount),
+        sub: `${countPayment("pending")} awaiting payment`,
+        accent: "border-violet-500",
+        subColor: "text-violet-500",
+        trend: "up",
+      },
+      {
+        title: "OVERDUE",
+        amount: formatLakhs(failedAmount),
+        sub: `${countPayment("failed")} failed payments`,
+        accent: "border-rose-400",
+        subColor: "text-rose-500",
+        trend: "down",
+      },
+    ];
+
+    // Material inventory — top 3 from item library
+    const materialAccents = ["border-emerald-400", "border-rose-400", "border-amber-400"];
+    const materials = library.slice(0, 3).map((item, i) => ({
+      code: `STK-${String(i + 13).padStart(3, "0")}`,
+      name: item.description?.split(" — ")[0] || item.description || "Library item",
+      note: item.materials?.[0]?.spec
+        ? `${item.materials[0].name} · ${item.materials[0].spec}`
+        : `Unit: ${item.unit} · ₹${item.rate}/${item.unit}`,
+      status: i === 1 ? "out" : "in",
+      accent: materialAccents[i % materialAccents.length],
+    }));
+
+    // Projects — completed-payment clients become active projects
+    const projects = clients
+      .filter((c) => c.paymentStatus === "completed")
+      .slice(0, 4)
+      .map((c) => ({
+        code: c.clientID,
+        name: `${c.location} · ${c.clientName}`,
+        target: c.joinDate,
+        status: "On Track",
+      }));
+
+    return {
+      stats,
+      distribution,
+      pipeline,
+      invoices,
+      materials,
+      projects,
+      totalLeads: leads.length,
+    };
+  }, []);
+
   return (
     <div className="h-full overflow-y-auto bg-overallbg p-1.5 font-manrope">
       {/* Top stats */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
-        {STATS.map((s) => (
+        {data.stats.map((s) => (
           <StatCard key={s.label} stat={s} />
         ))}
       </div>
 
       {/* Lead Distribution + Daily Activity */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
-        <LeadDistribution />
+        <LeadDistribution distribution={data.distribution} total={data.totalLeads} />
         <DailyActivity />
       </div>
 
       {/* Active Lead Pipeline */}
       <div className="mb-4">
-        <ActivePipeline />
+        <ActivePipeline pipeline={data.pipeline} />
       </div>
 
       {/* Invoice Management */}
       <div className="mb-4">
-        <InvoiceManagement />
+        <InvoiceManagement invoices={data.invoices} />
       </div>
 
       {/* Material Inventory + Project Status */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <MaterialInventory />
-        <ProjectStatus />
+        <MaterialInventory materials={data.materials} />
+        <ProjectStatus projects={data.projects} />
       </div>
     </div>
   );

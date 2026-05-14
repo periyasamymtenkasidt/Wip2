@@ -4,6 +4,7 @@ import { Mail, Lock, Eye, EyeOff, Loader2, Check } from "lucide-react";
 // Keep your existing asset paths
 import Google from "../../assets/images/Google.png";
 import HomePage from "../../assets/images/HomePage.png";
+import wipLogo from "../../assets/images/Logo.png";
 
 const Login = () => {
   const navigate = useNavigate();
@@ -77,6 +78,27 @@ const Login = () => {
         <div className="w-full md:w-[55%] min-h-full z-10 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-10 bg-[#E9E9FF]/40   backdrop-blur-xl border-l border-white/80 shadow-[-20px_0_40px_rgba(0,0,0,0.06)] rounded-r-[2.2rem]">
           {" "}
           <div className="w-full max-w-[380px] mx-auto">
+            {/* WIP editorial mark */}
+            <div className="mb-7 flex items-center gap-3">
+              <img
+                src={wipLogo}
+                alt="WIP"
+                className="h-9 w-auto object-contain"
+                style={{
+                  filter:
+                    "contrast(1.2) saturate(1.1) drop-shadow(0 1px 1px rgba(139, 105, 20, 0.15))",
+                }}
+              />
+              <div className="flex flex-col leading-none border-l border-[#c5a367]/40 pl-3">
+                <p className="text-[9px] uppercase tracking-[0.4em] text-[#8b6914] font-bold leading-none">
+                  Architecture
+                </p>
+                <p className="text-[9px] uppercase tracking-[0.4em] text-text-subtle font-semibold mt-1.5 leading-none">
+                  Interiors · Chennai
+                </p>
+              </div>
+            </div>
+
             {/* Header */}
             <div className="mb-8 text-left">
               <h1 className="text-[32px] font-bold text-textcolor tracking-tight mb-2">
@@ -184,6 +206,7 @@ const Login = () => {
                 )}
                 <div className="flex justify-end pt-0.5">
                   <button
+                    type="button"
                     onClick={() => navigate("/forgot-password")}
                     className="text-[12.5px] font-semibold text-grey hover:text-[#0a1b49]"
                   >

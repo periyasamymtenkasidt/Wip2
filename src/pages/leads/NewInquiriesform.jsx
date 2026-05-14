@@ -1,21 +1,27 @@
-import React, { useState } from "react";
+import { useMemo, useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
-import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
-import { getPreset, getPresetKeys } from "../../data/QuotePresets";
+import {
+  getPreset,
+  getPresetKeys,
+  computeTotals,
+  generateInvestmentBands,
+  getMultiplierFor,
+} from "../../data/QuotePresets";
 
 const DEFAULT_PRESET = "2BHK";
 
-// Capture the property preset on the inquiry so the Send Proposal flow
-// later knows which scope template to start from. Scope items themselves
-// are NOT collected here — they belong to the proposal.
+// Pull preset-defined defaults so a single dropdown change drives
+// propertyType + sizeRange — these mirror the fields managed in
+// Settings → Proposal Master.
 const buildPresetState = (key) => {
   const preset = getPreset(key);
   return {
     quotePreset: key,
     quoteSizeRange: preset?.sizeRange || "",
+    propertyType: preset?.propertyType || "",
   };
 };
 
@@ -24,15 +30,15 @@ const INITIAL_FORM_STATE = {
   phoneNumber: "",
   email: "",
   inquirySource: "",
-  projectScope: "",
   investmentRange: "",
-  buildUpArea: "",
   processionDate: "",
-  propertyType: "",
   location: "",
   inquiryStatus: "Inquiry",
   architecturalNotes: "",
-  ...buildPresetState(DEFAULT_PRESET),
+  // populated by buildPresetState below
+  quotePreset: "",
+  quoteSizeRange: "",
+  propertyType: "",
 };
 
 const inquirySources = [
@@ -44,103 +50,129 @@ const inquirySources = [
   "Other",
 ];
 
-const FIELD_CONFIG = {
-  clientInfo: [
-    {
-      name: "fullName",
-      label: "Full Name",
-      type: "text",
-      placeholder: "Enter full name",
-      required: true,
-    },
-    {
-      name: "phoneNumber",
-      label: "Phone Number",
-      type: "tel",
-      placeholder: "10-digit number",
-      required: true,
-      validation: (val) =>
-        !/^\d{10}$/.test(val.replace(/\s/g, ""))
-          ? "Must be a 10-digit number"
-          : null,
-    },
-    {
-      name: "email",
-      label: "Email Address",
-      type: "email",
-      placeholder: "example@domain.com",
-      required: true,
-      validation: (val) =>
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
-          ? "Enter a valid email address"
-          : null,
-    },
-    {
-      name: "inquirySource",
-      label: "Inquiry Source",
-      type: "select",
-      options: inquirySources,
-      required: true,
-    },
-  ],
-  projectDetails: [
-    {
-      name: "projectScope",
-      label: "Project Scope",
-      type: "select",
-      options: ["Full Home Interior", "Interior", "On Hold", "Pending"],
-      required: true,
-    },
-    {
-      name: "investmentRange",
-      label: "Investment Range",
-      type: "text",
-      placeholder: "e.g. ₹50L – ₹1Cr",
-      required: true,
-    },
-    {
-      name: "buildUpArea",
-      label: "Build-Up Area (Sq.Ft)",
-      type: "text",
-      placeholder: "e.g. 2400",
-      required: true,
-    },
-    {
-      name: "processionDate",
-      label: "Procession Date",
-      type: "date",
-      required: true,
-    },
-    {
-      name: "propertyType",
-      label: "Property Type",
-      type: "select",
-      options: PROPERTY_TYPES,
-      required: true,
-    },
-    {
-      name: "location",
-      label: "City / Location",
-      type: "text",
-      placeholder: "e.g. Chennai, Tamil Nadu",
-      icon: GrLocation,
-      required: true,
-    },
-  ],
-};
+const CLIENT_INFO_FIELDS = [
+  {
+    name: "fullName",
+    label: "Full Name",
+    type: "text",
+    placeholder: "Enter full name",
+    required: true,
+  },
+  {
+    name: "phoneNumber",
+    label: "Phone Number",
+    type: "tel",
+    placeholder: "10-digit number",
+    required: true,
+    validation: (val) =>
+      !/^\d{10}$/.test(val.replace(/\s/g, ""))
+        ? "Must be a 10-digit number"
+        : null,
+  },
+  {
+    name: "email",
+    label: "Email Address",
+    type: "email",
+    placeholder: "example@domain.com",
+    required: true,
+    validation: (val) =>
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
+        ? "Enter a valid email address"
+        : null,
+  },
+  {
+    name: "inquirySource",
+    label: "Inquiry Source",
+    type: "select",
+    options: inquirySources,
+    required: true,
+  },
+];
 
-const SectionHeader = ({ children }) => (
-  <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-select-blue mb-4">
-    <span className="w-0.5 h-3.5 bg-select-blue rounded-full shrink-0" />
-    {children}
-  </h2>
+const PROJECT_DETAIL_FIELDS = [
+  {
+    name: "processionDate",
+    label: "Possession Date",
+    type: "date",
+    required: true,
+  },
+  {
+    name: "location",
+    label: "City / Location",
+    type: "text",
+    placeholder: "e.g. Chennai, Tamil Nadu",
+    icon: GrLocation,
+    required: true,
+  },
+];
+
+// Fields that gate submission — collected across all sections.
+// sizeRange comes from the chosen preset; propertyType is picked from
+// the preset's applicable types list.
+const REQUIRED_FIELDS = [
+  ...CLIENT_INFO_FIELDS,
+  ...PROJECT_DETAIL_FIELDS,
+  { name: "quotePreset", label: "Property Preset", required: true },
+  { name: "propertyType", label: "Property Type", required: true },
+  { name: "investmentRange", label: "Investment Range", required: true },
+];
+
+const SectionHeader = ({ children, hint }) => (
+  <div className="mb-4">
+    <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-select-blue">
+      <span className="w-0.5 h-3.5 bg-select-blue rounded-full shrink-0" />
+      {children}
+    </h2>
+    {hint && (
+      <p className="text-[11px] text-text-subtle mt-1 ml-3.5">{hint}</p>
+    )}
+  </div>
 );
 
-function NewInquiriesform({ onClose, onAddLead }) {
+const formatLakhs = (rupees) => `₹${(rupees / 100000).toFixed(1)}L`;
 
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
+function NewInquiriesform({ onClose, onAddLead }) {
+  const presetKeys = useMemo(() => getPresetKeys(), []);
+  const [formData, setFormData] = useState({
+    ...INITIAL_FORM_STATE,
+    ...buildPresetState(presetKeys.includes(DEFAULT_PRESET) ? DEFAULT_PRESET : presetKeys[0]),
+  });
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const activePreset = useMemo(
+    () => getPreset(formData.quotePreset),
+    [formData.quotePreset],
+  );
+
+  const presetTotals = useMemo(
+    () => (activePreset ? computeTotals(activePreset.scopeItems || []) : null),
+    [activePreset],
+  );
+
+  // Property-type multiplier scales the preset's baseline (penthouse may
+  // be 1.2×, studio 0.85×, etc.). Falls back to 1.0 when not configured.
+  const typeMultiplier = useMemo(
+    () => getMultiplierFor(activePreset, formData.propertyType),
+    [activePreset, formData.propertyType],
+  );
+
+  const effectiveBaseline = (presetTotals?.grandTotal || 0) * typeMultiplier;
+
+  // Investment-range bands derived from the effective baseline. If the
+  // current form value is something the user typed before (e.g. while
+  // editing) and not in the generated bands, prepend it so the select
+  // can render it without losing the value.
+  const investmentBands = useMemo(() => {
+    const bands = generateInvestmentBands(effectiveBaseline);
+    if (
+      formData.investmentRange &&
+      !bands.includes(formData.investmentRange)
+    ) {
+      return [formData.investmentRange, ...bands];
+    }
+    return bands;
+  }, [effectiveBaseline, formData.investmentRange]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -151,15 +183,12 @@ function NewInquiriesform({ onClose, onAddLead }) {
   const handlePresetChange = (e) => {
     const key = e.target.value;
     setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
+    setErrors((prev) => ({ ...prev, propertyType: "", quoteSizeRange: "" }));
   };
 
   const validate = () => {
     const newErrors = {};
-    const allFields = [
-      ...FIELD_CONFIG.clientInfo,
-      ...FIELD_CONFIG.projectDetails,
-    ];
-    allFields.forEach((f) => {
+    REQUIRED_FIELDS.forEach((f) => {
       const val = formData[f.name];
       if (f.required && (!val || !val.toString().trim())) {
         newErrors[f.name] = `${f.label} is required`;
@@ -180,7 +209,13 @@ function NewInquiriesform({ onClose, onAddLead }) {
     }
     setIsSubmitting(true);
     try {
-      await onAddLead?.(formData);
+      // Older consumers (Leads.jsx, table column "scope") still read
+      // `projectScope` — derive it from the property type so the column
+      // shows something meaningful without re-asking the user.
+      await onAddLead?.({
+        ...formData,
+        projectScope: formData.propertyType,
+      });
       onClose?.();
     } finally {
       setIsSubmitting(false);
@@ -207,7 +242,10 @@ function NewInquiriesform({ onClose, onAddLead }) {
       <button
         type="button"
         onClick={() => {
-          setFormData(INITIAL_FORM_STATE);
+          setFormData({
+            ...INITIAL_FORM_STATE,
+            ...buildPresetState(presetKeys.includes(DEFAULT_PRESET) ? DEFAULT_PRESET : presetKeys[0]),
+          });
           setErrors({});
         }}
         disabled={isSubmitting}
@@ -244,63 +282,125 @@ function NewInquiriesform({ onClose, onAddLead }) {
   return (
     <Modal
       title="Add New Inquiry"
-      subtitle="Fill in the client and project details to create a new inquiry"
+      subtitle="Fill in the client and property details to create a new inquiry"
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
       <form id="new-inquiry-form" onSubmit={handleSubmit} noValidate>
+        {/* ── Client Information ─────────────────────────────────────── */}
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
           <div className="grid grid-cols-2 gap-4">
-            {FIELD_CONFIG.clientInfo.slice(0, 2).map(field)}
+            {CLIENT_INFO_FIELDS.slice(0, 2).map(field)}
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            {FIELD_CONFIG.clientInfo.slice(2, 4).map(field)}
+            {CLIENT_INFO_FIELDS.slice(2, 4).map(field)}
           </div>
         </div>
 
         <div className="border-t border-border mb-6" />
 
+        {/* ── Property Configuration (proposal-master driven) ────────── */}
         <div className="mb-6">
-          <SectionHeader>Project Details</SectionHeader>
-          <div className="grid grid-cols-2 gap-4">
-            {FIELD_CONFIG.projectDetails.map(field)}
-          </div>
-        </div>
-
-        <div className="border-t border-border mb-6" />
-
-        <div className="mb-6">
-          <SectionHeader>Property Preset</SectionHeader>
+          <SectionHeader hint="The preset defines which property types it can be used for — pick one here.">
+            Property Configuration
+          </SectionHeader>
           <div className="grid grid-cols-2 gap-4">
             <InputField
               name="quotePreset"
-              label="Preset"
+              label="Property Preset"
               type="select"
               value={formData.quotePreset}
               onChange={handlePresetChange}
-              options={getPresetKeys()}
+              options={presetKeys}
+              error={errors.quotePreset}
             />
             <InputField
-              name="quoteSizeRange"
-              label="Size Range"
-              type="text"
-              value={formData.quoteSizeRange}
+              name="propertyType"
+              label="Property Type"
+              type="select"
+              value={formData.propertyType}
               onChange={handleChange}
-              placeholder="e.g. 800–1100 sq ft"
+              options={activePreset?.propertyTypes || []}
+              error={errors.propertyType}
             />
           </div>
-          <p className="text-[11px] text-text-subtle mt-2">
-            The proposal you send later will start from this preset. Scope
-            items are added when sending the proposal.
-          </p>
+
+          {activePreset && (
+            <div className="mt-3 rounded-lg border border-bordergray bg-bg-soft px-3 py-2.5 ml-3.5">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                    Size Range
+                  </span>
+                  <strong className="text-text">
+                    {activePreset.sizeRange || "—"}
+                  </strong>
+                </span>
+                {presetTotals && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                      Baseline
+                    </span>
+                    <strong className="text-text">
+                      {formatLakhs(effectiveBaseline)}
+                    </strong>
+                    <span className="text-text-subtle">incl. GST</span>
+                    {typeMultiplier !== 1 && (
+                      <span className="text-[10px] font-bold text-select-blue bg-active-bg px-1.5 py-0.5 rounded-md ml-0.5">
+                        ×{typeMultiplier.toFixed(2)} {formData.propertyType}
+                      </span>
+                    )}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                    Applies to
+                  </span>
+                  <strong className="text-text">
+                    {(activePreset.propertyTypes || []).join(", ") || "—"}
+                  </strong>
+                </span>
+              </div>
+              <p className="text-[10.5px] text-text-subtle mt-1.5">
+                Edit these values in <strong>Settings → Proposal Master</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border mb-6" />
 
-        <>
-          <SectionHeader>Notes</SectionHeader>
+        {/* ── Project Details (schedule + commercials + location) ────── */}
+        <div className="mb-6">
+          <SectionHeader>Project Details</SectionHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              name="investmentRange"
+              label="Investment Range"
+              type="select"
+              value={formData.investmentRange}
+              onChange={handleChange}
+              options={investmentBands}
+              placeholder={
+                investmentBands.length
+                  ? "Choose a range"
+                  : "Pick a preset first"
+              }
+              error={errors.investmentRange}
+            />
+            {PROJECT_DETAIL_FIELDS.slice(0, 1).map(field)}
+          </div>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {PROJECT_DETAIL_FIELDS.slice(1).map(field)}
+          </div>
+        </div>
 
+        <div className="border-t border-border mb-6" />
+
+        {/* ── Notes ──────────────────────────────────────────────────── */}
+        <div className="mb-2">
+          <SectionHeader>Notes</SectionHeader>
           <InputField
             type="textarea"
             name="architecturalNotes"
@@ -311,12 +411,11 @@ function NewInquiriesform({ onClose, onAddLead }) {
             placeholder="Mention design preferences, mood, or constraints…"
             rows={4}
           />
-
           <p className="text-[11px] text-text-subtle mt-3">
             New inquiries start as <strong>Inquiry</strong>. Move them through
             the pipeline from the lead detail page.
           </p>
-        </>
+        </div>
       </form>
     </Modal>
   );

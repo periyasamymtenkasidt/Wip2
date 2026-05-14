@@ -1,21 +1,27 @@
-import React, { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
-import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
-import { ALL_STATUSES } from "../../data/LeadStatusConfig";
-import { getPreset, getPresetKeys } from "../../data/QuotePresets";
+import {
+  getPreset,
+  getPresetKeys,
+  computeTotals,
+  generateInvestmentBands,
+  getMultiplierFor,
+} from "../../data/QuotePresets";
 
 const DEFAULT_PRESET = "2BHK";
 
-// Inquiry-form preset only stores the key + size range. Scope of work is
-// captured later in the Send Proposal flow.
+// Pull preset-defined defaults so a single dropdown change drives
+// propertyType + sizeRange — these mirror the fields managed in
+// Settings → Proposal Master.
 const buildPresetState = (key) => {
   const preset = getPreset(key);
   return {
     quotePreset: key,
     quoteSizeRange: preset?.sizeRange || "",
+    propertyType: preset?.propertyType || "",
   };
 };
 
@@ -24,62 +30,80 @@ const INITIAL_FORM_STATE = {
   phoneNumber: "",
   email: "",
   inquirySource: "",
-  projectScope: "",
   investmentRange: "",
-  buildUpArea: "",
   processionDate: "",
-  propertyType: "",
   location: "",
   inquiryStatus: "",
   architecturalNotes: "",
-  ...buildPresetState(DEFAULT_PRESET),
+  quotePreset: "",
+  quoteSizeRange: "",
+  propertyType: "",
 };
 
-// "Won" is set atomically via the Mark Won button (which also creates a
-// client record), so it must not be manually selectable here.
-const inquiryStatuses = ALL_STATUSES.filter((s) => s !== "Won");
+const inquirySources = [
+  "Referral",
+  "Walk-in",
+  "Social Media",
+  "Website",
+  "Cold Call",
+  "Other",
+];
 
-const inquirySources = ["Referral", "Walk-in", "Social Media", "Website", "Cold Call", "Other"];
+const CLIENT_INFO_FIELDS = [
+  { name: "fullName", label: "Full Name", type: "text", placeholder: "Enter full name", required: true },
+  {
+    name: "phoneNumber", label: "Phone Number", type: "tel", placeholder: "10-digit number",
+    required: true,
+    validation: (val) => !/^\d{10}$/.test(val.replace(/\s/g, "")) ? "Must be a 10-digit number" : null,
+  },
+  {
+    name: "email", label: "Email Address", type: "email", placeholder: "example@domain.com",
+    required: true,
+    validation: (val) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) ? "Enter a valid email address" : null,
+  },
+  { name: "inquirySource", label: "Inquiry Source", type: "select", options: inquirySources },
+];
 
-const FIELD_CONFIG = {
-  clientInfo: [
-    { name: "fullName", label: "Full Name", type: "text", placeholder: "Enter full name", required: true },
-    {
-      name: "phoneNumber", label: "Phone Number", type: "tel", placeholder: "10-digit number",
-      required: true,
-      validation: (val) => !/^\d{10}$/.test(val.replace(/\s/g, "")) ? "Must be a 10-digit number" : null,
-    },
-    {
-      name: "email", label: "Email Address", type: "email", placeholder: "example@domain.com",
-      required: true,
-      validation: (val) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) ? "Enter a valid email address" : null,
-    },
-    { name: "inquirySource", label: "Inquiry Source", type: "select", options: inquirySources, required: true },
-  ],
-  projectDetails: [
-    { name: "projectScope", label: "Project Scope", type: "select", options: ["Full Home Interior", "Interior", "On Hold", "Pending"], required: true },
-    { name: "investmentRange", label: "Investment Range", type: "text", placeholder: "e.g. ₹50L – ₹1Cr", required: true },
-    { name: "buildUpArea", label: "Build-Up Area (Sq.Ft)", type: "text", placeholder: "e.g. 2400", required: true },
-    { name: "processionDate", label: "Procession Date", type: "date", required: true },
-    { name: "propertyType", label: "Property Type", type: "select", options: PROPERTY_TYPES, required: true },
-    { name: "location", label: "City / Location", type: "text", placeholder: "e.g. Chennai, Tamil Nadu", icon: GrLocation, required: true },
-  ],
-};
+const PROJECT_DETAIL_FIELDS = [
+  { name: "processionDate", label: "Possession Date", type: "date" },
+  { name: "location", label: "City / Location", type: "text", placeholder: "e.g. Chennai, Tamil Nadu", icon: GrLocation, required: true },
+];
 
-const SectionHeader = ({ children }) => (
-  <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-select-blue mb-4">
-    <span className="w-0.5 h-3.5 bg-select-blue rounded-full shrink-0" />
-    {children}
-  </h2>
+// Status transitions live on the lead detail page (Mark Qualified, Send
+// Proposal, Mark Won, etc.) — not on this edit form. We still carry
+// `inquiryStatus` in formData so submit preserves the lead's existing
+// status, but we don't validate or render a picker for it.
+const REQUIRED_FIELDS = [
+  ...CLIENT_INFO_FIELDS.filter((f) => f.required),
+  { name: "location", label: "Location", required: true },
+  { name: "quotePreset", label: "Property Preset", required: true },
+  { name: "propertyType", label: "Property Type", required: true },
+];
+
+const SectionHeader = ({ children, hint }) => (
+  <div className="mb-4">
+    <h2 className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-select-blue">
+      <span className="w-0.5 h-3.5 bg-select-blue rounded-full shrink-0" />
+      {children}
+    </h2>
+    {hint && (
+      <p className="text-[11px] text-text-subtle mt-1 ml-3.5">{hint}</p>
+    )}
+  </div>
 );
 
+const formatLakhs = (rupees) => `₹${(rupees / 100000).toFixed(1)}L`;
+
 function EditInquiryform({ initialData, onClose, onAddLead }) {
+  const presetKeys = useMemo(() => getPresetKeys(), []);
   const [formData, setFormData] = useState(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  React.useEffect(() => {
+  useEffect(() => {
     if (!initialData) return;
+
+    // Stored format is "DD.MM.YYYY"; the date input wants "YYYY-MM-DD".
     let processionDate = "";
     if (initialData.possessionDate) {
       const parts = initialData.possessionDate.split(".");
@@ -87,31 +111,73 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
         ? `${parts[2]}-${parts[1]}-${parts[0]}`
         : initialData.possessionDate;
     }
-    const keys = getPresetKeys();
-    const presetKey = keys.includes(initialData.quotePreset)
+
+    const presetKey = presetKeys.includes(initialData.quotePreset)
       ? initialData.quotePreset
-      : keys.includes(DEFAULT_PRESET)
+      : presetKeys.includes(DEFAULT_PRESET)
         ? DEFAULT_PRESET
-        : keys[0];
+        : presetKeys[0];
     const presetDefaults = buildPresetState(presetKey);
+
+    // If the saved propertyType isn't in the preset's allowed list (e.g.
+    // the preset was edited later), fall back to the preset's default so
+    // the dropdown shows a valid selection.
+    const allowed = getPreset(presetKey)?.propertyTypes || [];
+    const propertyType =
+      initialData.propertyType && allowed.includes(initialData.propertyType)
+        ? initialData.propertyType
+        : presetDefaults.propertyType;
+
     setFormData({
       fullName: initialData.clientName || "",
       phoneNumber: initialData.phone || "",
       email: initialData.email || "",
       inquirySource: initialData.inquirySource || "",
-      projectScope: initialData.scope || "",
       investmentRange: initialData.investment || "",
-      buildUpArea: initialData.buildUpArea || "",
       processionDate,
-      propertyType: initialData.propertyType || "",
       location: initialData.location || "",
       inquiryStatus: initialData.status || "",
       architecturalNotes: initialData.architecturalNotes || "",
       quotePreset: presetKey,
+      // existing lead values win over preset defaults, so manual edits stick
       quoteSizeRange:
         initialData.quoteSizeRange ?? presetDefaults.quoteSizeRange,
+      propertyType,
     });
-  }, [initialData]);
+  }, [initialData, presetKeys]);
+
+  const activePreset = useMemo(
+    () => getPreset(formData.quotePreset),
+    [formData.quotePreset],
+  );
+
+  const presetTotals = useMemo(
+    () => (activePreset ? computeTotals(activePreset.scopeItems || []) : null),
+    [activePreset],
+  );
+
+  // Property-type multiplier scales the preset's baseline (penthouse may
+  // be 1.2×, studio 0.85×, etc.). Falls back to 1.0 when not configured.
+  const typeMultiplier = useMemo(
+    () => getMultiplierFor(activePreset, formData.propertyType),
+    [activePreset, formData.propertyType],
+  );
+
+  const effectiveBaseline = (presetTotals?.grandTotal || 0) * typeMultiplier;
+
+  // Investment-range bands derived from the effective baseline. If the
+  // saved value isn't in the generated bands (e.g. an older record),
+  // prepend it so the select still renders it as the current choice.
+  const investmentBands = useMemo(() => {
+    const bands = generateInvestmentBands(effectiveBaseline);
+    if (
+      formData.investmentRange &&
+      !bands.includes(formData.investmentRange)
+    ) {
+      return [formData.investmentRange, ...bands];
+    }
+    return bands;
+  }, [effectiveBaseline, formData.investmentRange]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -122,16 +188,12 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
   const handlePresetChange = (e) => {
     const key = e.target.value;
     setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
+    setErrors((prev) => ({ ...prev, propertyType: "", quoteSizeRange: "" }));
   };
 
   const validate = () => {
     const newErrors = {};
-    const requiredFields = [
-      ...FIELD_CONFIG.clientInfo.filter((f) => f.name !== "inquirySource"),
-      { name: "location", label: "Location", required: true },
-      { name: "inquiryStatus", label: "Inquiry Status", required: true },
-    ];
-    requiredFields.forEach((f) => {
+    REQUIRED_FIELDS.forEach((f) => {
       const val = formData[f.name];
       if (f.required && (!val || !val.toString().trim())) {
         newErrors[f.name] = `${f.label} is required`;
@@ -152,7 +214,12 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
     }
     setIsSubmitting(true);
     try {
-      await onAddLead?.(formData);
+      // Older consumers (LeadEdit.jsx, table column "scope") still read
+      // `projectScope` — derive it from the property type.
+      await onAddLead?.({
+        ...formData,
+        projectScope: formData.propertyType,
+      });
       onClose?.();
     } finally {
       setIsSubmitting(false);
@@ -203,86 +270,127 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
   return (
     <Modal
       title="Edit Inquiry"
-      subtitle="Update client and project details"
+      subtitle="Update client and property details"
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
       <form id="edit-inquiry-form" onSubmit={handleSubmit} noValidate>
-
+        {/* ── Client Information ─────────────────────────────────────── */}
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
           <div className="grid grid-cols-2 gap-4">
-            {FIELD_CONFIG.clientInfo.slice(0, 2).map(field)}
+            {CLIENT_INFO_FIELDS.slice(0, 2).map(field)}
           </div>
           <div className="grid grid-cols-2 gap-4 mt-4">
-            {FIELD_CONFIG.clientInfo.slice(2, 4).map(field)}
+            {CLIENT_INFO_FIELDS.slice(2, 4).map(field)}
           </div>
         </div>
 
         <div className="border-t border-border mb-6" />
 
+        {/* ── Property Configuration (proposal-master driven) ────────── */}
         <div className="mb-6">
-          <SectionHeader>Project Details</SectionHeader>
-          <div className="grid grid-cols-2 gap-4">
-            {FIELD_CONFIG.projectDetails.map(field)}
-          </div>
-        </div>
-
-        <div className="border-t border-border mb-6" />
-
-        <div className="mb-6">
-          <SectionHeader>Property Preset</SectionHeader>
+          <SectionHeader hint="The preset defines which property types it can be used for — pick one here.">
+            Property Configuration
+          </SectionHeader>
           <div className="grid grid-cols-2 gap-4">
             <InputField
               name="quotePreset"
-              label="Preset"
+              label="Property Preset"
               type="select"
               value={formData.quotePreset}
               onChange={handlePresetChange}
-              options={getPresetKeys()}
+              options={presetKeys}
+              error={errors.quotePreset}
             />
             <InputField
-              name="quoteSizeRange"
-              label="Size Range"
-              type="text"
-              value={formData.quoteSizeRange}
+              name="propertyType"
+              label="Property Type"
+              type="select"
+              value={formData.propertyType}
               onChange={handleChange}
-              placeholder="e.g. 800–1100 sq ft"
+              options={activePreset?.propertyTypes || []}
+              error={errors.propertyType}
             />
           </div>
-          <p className="text-[11px] text-text-subtle mt-2">
-            Used as the starting point when sending the proposal. Scope items
-            are added in the Send Proposal flow.
-          </p>
+
+          {activePreset && (
+            <div className="mt-3 rounded-lg border border-bordergray bg-bg-soft px-3 py-2.5 ml-3.5">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px]">
+                <span className="flex items-center gap-1.5">
+                  <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                    Size Range
+                  </span>
+                  <strong className="text-text">
+                    {activePreset.sizeRange || "—"}
+                  </strong>
+                </span>
+                {presetTotals && (
+                  <span className="flex items-center gap-1.5">
+                    <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                      Baseline
+                    </span>
+                    <strong className="text-text">
+                      {formatLakhs(effectiveBaseline)}
+                    </strong>
+                    <span className="text-text-subtle">incl. GST</span>
+                    {typeMultiplier !== 1 && (
+                      <span className="text-[10px] font-bold text-select-blue bg-active-bg px-1.5 py-0.5 rounded-md ml-0.5">
+                        ×{typeMultiplier.toFixed(2)} {formData.propertyType}
+                      </span>
+                    )}
+                  </span>
+                )}
+                <span className="flex items-center gap-1.5">
+                  <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
+                    Applies to
+                  </span>
+                  <strong className="text-text">
+                    {(activePreset.propertyTypes || []).join(", ") || "—"}
+                  </strong>
+                </span>
+              </div>
+              <p className="text-[10.5px] text-text-subtle mt-1.5">
+                Edit these values in <strong>Settings → Proposal Master</strong>.
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border mb-6" />
 
-        <>
-          <SectionHeader>Inquiry Status &amp; Notes</SectionHeader>
-
-          <div className="mb-4">
-            <p className="text-[13px] font-medium text-text mb-2">Current Status</p>
-            <div className="grid grid-cols-4 gap-2">
-              {inquiryStatuses.map((status) => (
-                <button
-                  key={status}
-                  type="button"
-                  onClick={() => handleChange({ target: { name: "inquiryStatus", value: status } })}
-                  className={`py-2 rounded-lg text-xs font-medium capitalize border transition-all ${
-                    formData.inquiryStatus === status
-                      ? "bg-active-bg border-select-blue text-select-blue"
-                      : "bg-white border-border text-text-muted hover:bg-bg-soft"
-                  }`}
-                >
-                  {status}
-                </button>
-              ))}
-            </div>
-            {errors.inquiryStatus && (
-              <p className="text-red-500 text-[11px] mt-1">{errors.inquiryStatus}</p>
-            )}
+        {/* ── Project Details (schedule + commercials + location) ────── */}
+        <div className="mb-6">
+          <SectionHeader>Project Details</SectionHeader>
+          <div className="grid grid-cols-2 gap-4">
+            <InputField
+              name="investmentRange"
+              label="Investment Range"
+              type="select"
+              value={formData.investmentRange}
+              onChange={handleChange}
+              options={investmentBands}
+              placeholder={
+                investmentBands.length
+                  ? "Choose a range"
+                  : "Pick a preset first"
+              }
+              error={errors.investmentRange}
+            />
+            {PROJECT_DETAIL_FIELDS.slice(0, 1).map(field)}
           </div>
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            {PROJECT_DETAIL_FIELDS.slice(1).map(field)}
+          </div>
+        </div>
+
+        <div className="border-t border-border mb-6" />
+
+        {/* ── Notes ──────────────────────────────────────────────────── */}
+        <div className="mb-2">
+          <SectionHeader hint="Status is changed from the lead detail page — Mark Qualified, Send Proposal, Mark Won, etc.">
+            Notes
+          </SectionHeader>
 
           <InputField
             type="textarea"
@@ -294,8 +402,7 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
             placeholder="Mention design preferences, mood, or constraints…"
             rows={4}
           />
-        </>
-
+        </div>
       </form>
     </Modal>
   );

@@ -24,7 +24,7 @@ const Header = () => {
         {/* Animated shimmer sweep */}
         <span
           aria-hidden="true"
-          className="wip-shimmer pointer-events-none absolute inset-y-0 left-0 w-1/2 -skew-x-12"
+          className="wip-shimmer pointer-events-none absolute inset-y-0 left-0 w-2/3 -skew-x-12"
         />
         <img
           src={wipLogo}

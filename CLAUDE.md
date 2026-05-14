@@ -92,8 +92,6 @@ src/
   /signout           → Signout
 ```
 
-> NOTE: AppRoutes imports Login/ForgotPassword from `../pages/loginPage/` — the actual files live at `../pages/auth/`. Fix this import path if the app breaks at `/` or `/forgot-password`.
-
 ## Color Tokens (index.css @theme)
 All colors are defined as CSS variables in `src/index.css` and available as Tailwind utility classes.
 
@@ -101,12 +99,12 @@ All colors are defined as CSS variables in `src/index.css` and available as Tail
 |---|---|---|
 | `--color-primary` | `#1a2b4d` | `text-primary`, `bg-primary` |
 | `--color-select-blue` | `#1e3a8a` | `text-select-blue`, `bg-select-blue` |
-| `--color-bg` | `#f4f4f4` | `bg-bg` |
+| `--color-overallbg` | `#f4f4f4` | `bg-overallbg` |
 | `--color-surface` | `#ffffff` | `bg-surface` |
 | `--color-bg-soft` | `#f1f5f9` | `bg-bg-soft` |
 | `--color-active-bg` | `#e2eefe` | `bg-active-bg` |
-| `--color-border` | `#e2e8f0` | `border-border` |
-| `--color-text` | `#0f172a` | `text-text` |
+| `--color-bordergray` | `#e2e8f0` | `border-bordergray` |
+| `--color-textcolor` | `#0f172a` | `text-textcolor` |
 | `--color-text-muted` | `#64748b` | `text-text-muted` |
 | `--color-text-subtle` | `#94a3b8` | `text-text-subtle` |
 | `--color-grey` | `#475569` | `text-grey` |

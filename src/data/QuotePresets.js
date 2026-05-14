@@ -52,6 +52,13 @@ export const DEFAULT_PRESETS = {
   "1BHK": {
     label: "1 BHK Apartment",
     propertyType: "Apartment",
+    propertyTypes: ["Apartment", "Studio Apartment"],
+    // Price multiplier per property type. Same scope, different finishes
+    // and accessibility → different cost. 1.0 = baseline.
+    propertyTypeMultipliers: {
+      "Apartment": 1.0,
+      "Studio Apartment": 0.85,
+    },
     sizeRange: "450–600 sq ft",
     scopeItems: [
       { area: "Living Room", description: "False ceiling, accent wall, TV unit, lighting", amount: 80000, materials: MAT_LIVING },
@@ -65,6 +72,12 @@ export const DEFAULT_PRESETS = {
   "2BHK": {
     label: "2 BHK Apartment",
     propertyType: "Apartment",
+    propertyTypes: ["Apartment", "Penthouse", "Duplex"],
+    propertyTypeMultipliers: {
+      "Apartment": 1.0,
+      "Penthouse": 1.2,
+      "Duplex": 1.15,
+    },
     sizeRange: "800–1100 sq ft",
     scopeItems: [
       { area: "Living + Dining", description: "False ceiling, TV unit, crockery unit, lighting", amount: 130000, materials: MAT_LIVING },
@@ -80,6 +93,13 @@ export const DEFAULT_PRESETS = {
   "3BHK": {
     label: "3 BHK Apartment",
     propertyType: "Apartment",
+    propertyTypes: ["Apartment", "Penthouse", "Duplex", "Independent House"],
+    propertyTypeMultipliers: {
+      "Apartment": 1.0,
+      "Penthouse": 1.2,
+      "Duplex": 1.15,
+      "Independent House": 1.25,
+    },
     sizeRange: "1200–1600 sq ft",
     scopeItems: [
       { area: "Living + Dining", description: "Designer false ceiling, TV unit, bar/crockery unit, accent wall, lighting", amount: 180000, materials: MAT_LIVING },
@@ -96,6 +116,18 @@ export const DEFAULT_PRESETS = {
   "Villa": {
     label: "Villa / Independent House",
     propertyType: "Independent House",
+    propertyTypes: [
+      "Luxury Villa",
+      "Independent House",
+      "Farm House",
+      "Beach House",
+    ],
+    propertyTypeMultipliers: {
+      "Luxury Villa": 1.0,
+      "Independent House": 0.9,
+      "Farm House": 0.95,
+      "Beach House": 1.1,
+    },
     sizeRange: "2400+ sq ft",
     scopeItems: [
       { area: "Foyer & Living", description: "Double-height ceiling treatment, TV unit, accent walls, designer lighting", amount: 280000, materials: MAT_LIVING },
@@ -120,17 +152,62 @@ export const DEFAULT_PRESETS = {
 
 const MASTER_KEY = "quoteMaster";
 
+// One preset can apply to several physical property types (a 2BHK fit-out
+// is the same kitchen/wardrobe scope whether it's an apartment or a
+// penthouse). `propertyTypes` is the array of allowed types;
+// `propertyTypeMultipliers` is a parallel map of cost multipliers so the
+// same scope can quote at different prices per property type.
+// `propertyType` is kept as the primary/default for back-compat.
+const normalizePreset = (p) => {
+  if (!p) return p;
+  let next = { ...p };
+  if (Array.isArray(next.propertyTypes) && next.propertyTypes.length > 0) {
+    next.propertyType = next.propertyType || next.propertyTypes[0];
+  } else if (next.propertyType) {
+    next.propertyTypes = [next.propertyType];
+  } else {
+    next.propertyTypes = [];
+    next.propertyType = "";
+  }
+  const multipliers = { ...(next.propertyTypeMultipliers || {}) };
+  for (const t of next.propertyTypes) {
+    if (typeof multipliers[t] !== "number" || multipliers[t] <= 0) {
+      multipliers[t] = 1;
+    }
+  }
+  next.propertyTypeMultipliers = multipliers;
+  return next;
+};
+
+// Resolve the price multiplier for a given property type within a preset.
+// Falls back to 1.0 (no premium / discount) if not configured.
+export const getMultiplierFor = (preset, type) => {
+  if (!preset || !type) return 1;
+  const m = preset.propertyTypeMultipliers?.[type];
+  return typeof m === "number" && m > 0 ? m : 1;
+};
+
+const normalizeMaster = (master) => {
+  const out = {};
+  for (const k of Object.keys(master || {})) {
+    out[k] = normalizePreset(master[k]);
+  }
+  return out;
+};
+
 export const getMaster = () => {
   try {
     const raw = localStorage.getItem(MASTER_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (parsed && typeof parsed === "object") return parsed;
+      if (parsed && typeof parsed === "object") {
+        return normalizeMaster(parsed);
+      }
     }
   } catch {
     // fall through to defaults
   }
-  return DEFAULT_PRESETS;
+  return normalizeMaster(DEFAULT_PRESETS);
 };
 
 export const saveMaster = (master) => {
@@ -157,6 +234,28 @@ export const computeTotals = (items, gstRate = GST_RATE) => {
   const subtotal = sumScope(items);
   const gst = Math.round((subtotal * gstRate) / 100);
   return { subtotal, gst, grandTotal: subtotal + gst };
+};
+
+// Derive a tiered list of investment ranges from a preset's baseline
+// (in rupees). Bands move outward from the baseline so the user can
+// place themselves on the Budget → Bespoke continuum without typing
+// any numbers. Returned strings are stable so they survive as the
+// saved value on the lead record.
+const fmtLakhs = (lakhs) => {
+  if (lakhs >= 100) return `₹${(lakhs / 100).toFixed(1)}Cr`;
+  return `₹${Math.round(lakhs)}L`;
+};
+
+export const generateInvestmentBands = (baselineRupees) => {
+  if (!baselineRupees || baselineRupees <= 0) return [];
+  const B = baselineRupees / 100000;
+  return [
+    `${fmtLakhs(B * 0.8)} – ${fmtLakhs(B * 1.0)}`,
+    `${fmtLakhs(B * 1.0)} – ${fmtLakhs(B * 1.3)}`,
+    `${fmtLakhs(B * 1.3)} – ${fmtLakhs(B * 1.7)}`,
+    `${fmtLakhs(B * 1.7)} – ${fmtLakhs(B * 2.2)}`,
+    `${fmtLakhs(B * 2.2)}+`,
+  ];
 };
 
 // All quote IDs across all parents share the same yearly counter so the IDs

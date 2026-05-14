@@ -574,10 +574,6 @@ const ProjectDetail = () => {
                 </h3>
               </div>
               <div className="mt-10 border-t border-gray-100 text-left pt-5 space-y-3.5">
-                <div className="flex justify-between items-center text-md">
-                  <span className="text-gray-500 font-medium">Built-up Area</span>
-                  <span className="font-bold text-gray-900">{lead.buildUpArea || "—"}</span>
-                </div>
                 <div className="flex justify-between items-center text-[13px]">
                   <span className="text-gray-500 font-medium">Property Type</span>
                   <span className="font-bold text-gray-900">{lead.propertyType || "—"}</span>
