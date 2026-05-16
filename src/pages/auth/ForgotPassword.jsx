@@ -1,41 +1,55 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import InputField from "../../components/InputField";
 import HomePage from "../../assets/images/HomePage.png";
+
+const forgotPasswordSchema = yup.object().shape({
+  email: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email address"),
+});
 
 export default function ForgotPassword() {
   const navigate = useNavigate();
 
-  const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
+  const [apiError, setApiError] = useState("");
 
-  const handleReset = async (e) => {
-    e.preventDefault();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(forgotPasswordSchema),
+    defaultValues: {
+      email: "",
+    },
+  });
 
-    if (!email.trim()) {
-      setError("Please enter your email ID.");
-      return;
-    } else if (!/\S+@\S+\.\S+/.test(email)) {
-      setError("Please enter a valid email");
-      return;
-    }
-
+  const onSubmit = async (data) => {
     try {
       setLoading(true);
-      setError("");
+      setApiError("");
       setMessage("");
+      console.log(data);
 
       // Simulated API CALL
       await new Promise((resolve) => setTimeout(resolve, 1500));
 
       setMessage("Reset link sent successfully to your email.");
-      setEmail("");
+      reset();
     } catch (err) {
-        console.log(err);
-        
-      setError("Failed to send reset link.");
+      console.log(err);
+
+      setApiError("Failed to send reset link.");
     } finally {
       setLoading(false);
     }
@@ -43,64 +57,56 @@ export default function ForgotPassword() {
 
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-[#f4f6f9] p-4 sm:p-8 font-sans">
-      <div className="w-full max-w-[1000px] bg-white rounded-[2.5rem] shadow-xl flex p-3 min-h-[650px]">
-        {/* Left Side - Image */}
-        <div className="hidden md:block w-1/2 relative h-full">
+      {/* Main Container */}
+      <div className="relative w-full max-w-[1050px] min-h-[650px] border-22 border-[#E9E9FF] rounded-[3.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.06)] overflow-hidden flex ">
+        {/* Left Side - Image (Using object-cover for better fit) */}
+        <div className="absolute left-0 top-0 w-full h-full z-0 hidden md:block">
           <img
             src={HomePage}
-            alt="HomePage"
-            className="w-full h-full object-cover rounded-4xl"
+            alt="Abstract 3D Art"
+            className="w-[85%] h-full object-contain object-left opacity-70"
           />
         </div>
 
-        {/* Right Side - Form */}
-        <div className="w-full md:w-1/2 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-8">
+        {/* Structural Spacer */}
+        <div className="hidden md:block w-[45%] h-full z-0"></div>
+
+        {/* Right Side - Form Panel */}
+        <div className="w-full md:w-[55%] min-h-full z-10 flex flex-col justify-center px-8 sm:px-12 lg:px-16 py-10 bg-[#E9E9FF]/40 backdrop-blur-xl border-l border-white/80 shadow-[-20px_0_40px_rgba(0,0,0,0.06)] rounded-r-[2.2rem]">
           <div className="w-full max-w-[380px] mx-auto">
-            <div className="mb-10">
-              <h1 className="text-[32px] font-bold text-textcolor tracking-tight mb-3">
+            {/* Header */}
+            <div className="mb-10 text-left">
+              <h1 className="text-[32px] font-bold text-textcolor tracking-tight mb-2">
                 Reset Password
               </h1>
-              <p className="text-[14px] text-text-muted leading-relaxed">
+              <p className="text-[14.5px] text-text-muted">
                 Enter your email and we'll send you
-                <br className="hidden sm:block" />
-                a link to reset your password.
+                <br className="hidden sm:block" />a link to reset your password.
               </p>
             </div>
 
-            <form onSubmit={handleReset} className="space-y-6">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               {/* Email Input */}
-              <div className="space-y-2">
-                <label className="block text-[13px] font-semibold text-[#334155]">
-                  Email ID
-                </label>
-                <div className="relative">
-                  <input
-                    type="email"
-                    name="email"
-                    value={email}
-                    onChange={(e) => {
-                      setEmail(e.target.value);
-                      if (error) setError("");
-                    }}
-                    placeholder="yourname@beyondliving.com"
-                    className={`bg-white border shadow-sm text-[#334155] text-[14px] rounded-full h-[48px] px-5 w-full focus:outline-none focus:ring-1 transition-all border-select-blue border-x-3 border-y-0 placeholder-[#cbd5e1] ${
-                      error
-                        ? "border-red-500 focus:border-red-500 focus:ring-red-500"
-                        : "border-select-blue focus:border-select-blue focus:ring-select-blue"
-                    }`}
-                  />
-                </div>
-                {error && <p className="text-red-500 text-[11px] pl-2">{error}</p>}
+              <div className="space-y-1.5">
+                <InputField
+                  label="Email ID"
+                  name="email"
+                  type="email"
+                  placeholder="yourname@beyondliving.com"
+                  register={register("email")}
+                  error={errors.email?.message || apiError}
+                  variant="auth"
+                />
               </div>
 
               {/* Send Button */}
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full h-[48px] rounded-full text-[14px] font-semibold text-white shadow-md transition-all flex items-center justify-center gap-2 ${
+                className={`w-full h-[50px] rounded-full text-[14.5px] font-bold text-white shadow-md transition-all flex items-center justify-center gap-2 ${
                   loading
-                    ? "bg-[#0a1b49]/80 cursor-not-allowed"
-                    : "bg-[#0a1b49] hover:bg-[#071336] active:scale-[0.98]"
+                    ? "bg-purple/80 cursor-not-allowed"
+                    : "bg-purple hover:bg-dark-blue active:scale-[0.99]"
                 }`}
               >
                 {loading ? <Loader2 className="animate-spin h-5 w-5" /> : null}
@@ -111,7 +117,7 @@ export default function ForgotPassword() {
               <button
                 type="button"
                 onClick={() => navigate("/")}
-                className="w-full h-[48px] rounded-full border border-[#cbd5e1] bg-white text-[#334155] font-semibold text-[14px] hover:bg-gray-50 transition-all flex items-center justify-center"
+                className="w-full h-[50px] rounded-full border border-x-3 border-y-0 bg-white text-midgray font-bold text-[14px] hover:bg-gray-50 transition-all flex items-center justify-center shadow-sm"
               >
                 ← Back to Login
               </button>

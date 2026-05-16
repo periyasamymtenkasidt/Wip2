@@ -7,7 +7,7 @@ import {
   getBadgeClass,
 } from "../../data/LeadStatusConfig";
 
-const SUB_TABS = ["In Sales", "In Delivery", "Handover Complete", "Dropped"];
+const SUB_TABS = ["In Sales", "In Delivery", "Handover Complete"];
 
 const formatRelative = (iso) => {
   if (!iso) return "—";
@@ -146,7 +146,7 @@ const Projects = () => {
       key: "stageLabel",
       label: "Stage",
       render: (_, item) => (
-        <span className="text-[13px] font-semibold text-[#1e293b]">
+        <span className="text-[13px] font-semibold text-darkgray">
           {item.stageLabel}
         </span>
       ),

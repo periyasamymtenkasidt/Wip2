@@ -1,61 +1,55 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Mail, Lock, Eye, EyeOff, Loader2, Check } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import InputField from "../../components/InputField";
 // Keep your existing asset paths
 import Google from "../../assets/images/Google.png";
 import HomePage from "../../assets/images/HomePage.png";
 import wipLogo from "../../assets/images/Logo.png";
 
+const loginSchema = yup.object().shape({
+  email: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email address"),
+ password: yup
+  .string()
+  .required("Password is required")
+  .matches(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z0-9])\S{8,15}$/,
+    "Password must contain lowercase, uppercase, number, and special character"
+  ),
+});
+
 const Login = () => {
   const navigate = useNavigate();
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-    keepSigned: false,
-  });
-  const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
+  const [keepSigned, setKeepSigned] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === "checkbox" ? checked : value,
-    }));
-    if (errors[name]) {
-      setErrors((prev) => ({ ...prev, [name]: "" }));
-    }
-  };
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
+  });
 
-  const validate = () => {
-    let newErrors = {};
-    if (!formData.email) {
-      newErrors.email = "Email address is required";
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = "Please enter a valid email";
-    }
-
-    if (!formData.password) {
-      newErrors.password = "Password is required";
-    } else if (formData.password.length < 6) {
-      newErrors.password = "Password must be at least 6 characters";
-    }
-    return newErrors;
-  };
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-    } else {
-      setLoading(true);
-      setTimeout(() => {
-        setLoading(false);
-        navigate("/dashboard");
-      }, 1500);
-    }
+  const onSubmit = (data) => {
+    setLoading(true);
+    setTimeout(() => {
+      setLoading(false);
+      navigate("/dashboard");
+      console.log(data);
+    }, 1500);
   };
 
   return (
@@ -89,8 +83,8 @@ const Login = () => {
                     "contrast(1.2) saturate(1.1) drop-shadow(0 1px 1px rgba(139, 105, 20, 0.15))",
                 }}
               />
-              <div className="flex flex-col leading-none border-l border-[#c5a367]/40 pl-3">
-                <p className="text-[9px] uppercase tracking-[0.4em] text-[#8b6914] font-bold leading-none">
+              <div className="flex flex-col leading-none border-l border-paleorange/40 pl-3">
+                <p className="text-[9px] uppercase tracking-[0.4em] text-dark-yellow font-bold leading-none">
                   Architecture
                 </p>
                 <p className="text-[9px] uppercase tracking-[0.4em] text-text-subtle font-semibold mt-1.5 leading-none">
@@ -132,83 +126,47 @@ const Login = () => {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-5">
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
               {/* Email Input */}
               <div className="space-y-1.5">
-                <label className="block text-[13px] font-bold text-[#334155] ml-1">
-                  Email Address
-                </label>
-                <div className="relative flex items-center w-full">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                    <Mail
-                      className="text-text-subtle"
-                      size={18}
-                      strokeWidth={2}
-                    />
-                  </div>
-                  <input
-                    type="email"
-                    name="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                    placeholder="name@atelier.com"
-                    className={`box-border w-full border border-x-3 border-y-0 bg-white text-[#334155] text-[14px] rounded-full h-[48px] pl-11 pr-4 focus:outline-none focus:ring-2 transition-all placeholder-[#cbd5e1] ${
-                      errors.email
-                        ? "border-red-300 focus:ring-red-100"
-                        : "border-border focus:border-[#0a1b49] focus:ring-[#0a1b49]/10"
-                    }`}
-                  />
-                </div>
-                {errors.email && (
-                  <p className="text-red-500 text-[11px] pl-4">
-                    {errors.email}
-                  </p>
-                )}
+                <InputField
+                  label="Email Address"
+                  name="email"
+                  type="email"
+                  placeholder="name@atelier.com"
+                  register={register("email")}
+                  error={errors.email?.message}
+                  variant="auth"
+                  leftIcon={Mail}
+                />
               </div>
 
               {/* Password Input */}
               <div className="space-y-1.5">
-                <label className="block text-[13px] font-bold text-[#334155] ml-1">
-                  Password
-                </label>
-                <div className="relative flex items-center w-full">
-                  <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center pointer-events-none">
-                    <Lock
-                      className="text-text-subtle"
-                      size={18}
-                      strokeWidth={2}
-                    />
-                  </div>
-                  <input
-                    type={showPass ? "text" : "password"}
-                    name="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                    placeholder="••••••••"
-                    className={`box-border w-full border border-x-3 border-y-0 bg-white text-[#334155] text-[14px] rounded-full h-[48px] pl-11 pr-12 focus:outline-none focus:ring-2 transition-all placeholder-[#cbd5e1] ${
-                      errors.password
-                        ? "border-red-300 focus:ring-red-100"
-                        : "border-border focus:border-[#0a1b49] focus:ring-[#0a1b49]/10"
-                    }`}
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPass(!showPass)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-text-subtle hover:text-[#0a1b49] transition-colors"
-                  >
-                    {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
-                  </button>
-                </div>
-                {errors.password && (
-                  <p className="text-red-500 text-[11px] pl-4">
-                    {errors.password}
-                  </p>
-                )}
+                <InputField
+                  label="Password"
+                  name="password"
+                  type={showPass ? "text" : "password"}
+                  placeholder="••••••••"
+                  register={register("password")}
+                  error={errors.password?.message}
+                  variant="auth"
+                  leftIcon={Lock}
+                  rightElement={
+                    <button
+                      type="button"
+                      onClick={() => setShowPass(!showPass)}
+                      className="text-text-subtle hover:text-purple transition-colors"
+                    >
+                      {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  }
+                />
                 <div className="flex justify-end pt-0.5">
                   <button
                     type="button"
                     onClick={() => navigate("/forgot-password")}
-                    className="text-[12.5px] font-semibold text-grey hover:text-[#0a1b49]"
+                    className="text-[12.5px] font-semibold text-grey hover:text-purple"
                   >
                     Forgot password?
                   </button>
@@ -222,9 +180,9 @@ const Login = () => {
                     <input
                       type="checkbox"
                       name="keepSigned"
-                      checked={formData.keepSigned}
-                      onChange={handleChange}
-                      className="peer appearance-none w-4 h-4 border border-[#cbd5e1] rounded-[4px] checked:bg-[#0a1b49] checked:border-[#0a1b49] transition-all bg-white"
+                      checked={keepSigned}
+                      onChange={(e) => setKeepSigned(e.target.checked)}
+                      className="peer appearance-none w-4 h-4 border border-placeholder rounded-[4px] checked:bg-purple checked:border-purple transition-all bg-white"
                     />
                     <Check
                       className="absolute w-3 h-3 text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"
@@ -243,8 +201,8 @@ const Login = () => {
                 disabled={loading}
                 className={`w-full h-[50px] rounded-full text-[14.5px] font-bold text-white shadow-md transition-all flex items-center justify-center gap-2 ${
                   loading
-                    ? "bg-[#0a1b49]/80 cursor-not-allowed"
-                    : "bg-[#0a1b49] hover:bg-[#050e2b] active:scale-[0.99]"
+                    ? "bg-purple/80 cursor-not-allowed"
+                    : "bg-purple hover:bg-dark-blue active:scale-[0.99]"
                 }`}
               >
                 {loading && <Loader2 className="animate-spin h-5 w-5" />}

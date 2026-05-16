@@ -100,7 +100,7 @@ const Donut = ({ data, size = 200, stroke = 24 }) => {
   ).items;
   return (
     <svg width={size} height={size} className="-rotate-90">
-      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#f1f5f9" strokeWidth={stroke} />
+      <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--color-bg-soft)" strokeWidth={stroke} />
       {segments.map((seg) => (
         <circle
           key={seg.label}
@@ -429,7 +429,7 @@ const Dashboard = () => {
     ];
 
     // Lead distribution — by project location, top 4
-    const palette = ["#10b981", "#3b82f6", "#8b5cf6", "#ef4444"];
+    const palette = ["var(--color-emarold)", "var(--color-sky-blue)", "#8b5cf6", "#ef4444"];
     const locCounts = leads.reduce((acc, l) => {
       const key = l.location || "Other";
       acc[key] = (acc[key] || 0) + 1;
@@ -448,7 +448,7 @@ const Dashboard = () => {
     // Active pipeline strip — same status counts, with icons
     const pipeline = [
       { label: "Inquiry", value: `${inquiry} Leads`, icon: FiUserPlus, color: "#537BCC" },
-      { label: "Qualified", value: `${qualified} Leads`, icon: FiPhone, color: "#1a2b4d" },
+      { label: "Qualified", value: `${qualified} Leads`, icon: FiPhone, color: "var(--color-primary)" },
       { label: "Proposal", value: `${proposal} Leads`, icon: FiFileText, color: "#3B1CEB" },
       { label: "Negotiation", value: `${negotiation} Leads`, icon: FiMapPin, color: "#54ab4e" },
       { label: "Converted", value: `${won} Leads`, icon: FiCheckCircle, color: "#008000" },

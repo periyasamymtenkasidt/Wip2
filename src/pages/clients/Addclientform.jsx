@@ -1,8 +1,35 @@
 import React, { useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
+
+const addClientSchema = yup.object().shape({
+  clientName: yup.string().trim().required("Client Name is required"),
+  clientPhone: yup
+    .string()
+    .required("Phone Number is required")
+    .transform((v) => v?.replace(/\s/g, ""))
+    .matches(/^\d{10}$/, "Must be a 10-digit number"),
+  clientEmail: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+  location: yup.string().required("Property Type is required"),
+  locationSecondary: yup
+    .string()
+    .trim()
+    .required("City / Location is required"),
+  budget: yup.string().trim().required("Budget is required"),
+  paymentStatus: yup.string().required("Payment Status is required"),
+});
 
 const INITIAL_FORM_STATE = {
   clientName: "",
@@ -34,27 +61,18 @@ const FIELD_CONFIG = {
       label: "Client Name",
       type: "text",
       placeholder: "Full name",
-      required: true,
     },
     {
       name: "clientPhone",
       label: "Phone Number",
       type: "tel",
       placeholder: "10-digit number",
-      required: true,
-      validation: (val) =>
-        !/^\d{10}$/.test(val.replace(/\s/g, "")) ? "Must be a 10-digit number" : null,
     },
     {
       name: "clientEmail",
       label: "Email Address",
       type: "email",
       placeholder: "example@domain.com",
-      required: true,
-      validation: (val) =>
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
-          ? "Enter a valid email address"
-          : null,
     },
   ],
   propertyDetails: [
@@ -63,7 +81,6 @@ const FIELD_CONFIG = {
       label: "Property Type",
       type: "select",
       options: propertyTypes,
-      required: true,
     },
     {
       name: "locationSecondary",
@@ -71,14 +88,12 @@ const FIELD_CONFIG = {
       type: "text",
       placeholder: "e.g. Beverly Hills, CA",
       icon: GrLocation,
-      required: true,
     },
     {
       name: "budget",
       label: "Budget",
       type: "text",
       placeholder: "e.g. ₹60 – 70L",
-      required: true,
     },
   ],
 };
@@ -91,45 +106,25 @@ const SectionHeader = ({ children }) => (
 );
 
 function AddClientForm({ onClose, onAddClient }) {
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-  const [errors, setErrors] = useState({});
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(addClientSchema),
+    defaultValues: INITIAL_FORM_STATE,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  const paymentStatus = watch("paymentStatus");
 
-  const validate = () => {
-    const newErrors = {};
-    const allFields = [
-      ...FIELD_CONFIG.clientInfo,
-      ...FIELD_CONFIG.propertyDetails,
-      { name: "paymentStatus", label: "Payment Status", required: true },
-    ];
-    allFields.forEach((f) => {
-      const val = formData[f.name];
-      if (f.required && (!val || !val.toString().trim())) {
-        newErrors[f.name] = `${f.label} is required`;
-      } else if (f.validation) {
-        const msg = f.validation(val);
-        if (msg) newErrors[f.name] = msg;
-      }
-    });
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await onAddClient?.(formData);
+      await onAddClient?.(data);
       onClose?.();
     } finally {
       setIsSubmitting(false);
@@ -142,9 +137,8 @@ function AddClientForm({ onClose, onAddClient }) {
       name={cfg.name}
       label={cfg.label}
       type={cfg.type}
-      value={formData[cfg.name]}
-      onChange={handleChange}
-      error={errors[cfg.name]}
+      register={register(cfg.name)}
+      error={errors[cfg.name]?.message}
       placeholder={cfg.placeholder}
       options={cfg.options}
       icon={cfg.icon}
@@ -156,8 +150,7 @@ function AddClientForm({ onClose, onAddClient }) {
       <button
         type="button"
         onClick={() => {
-          setFormData(INITIAL_FORM_STATE);
-          setErrors({});
+          reset(INITIAL_FORM_STATE);
         }}
         disabled={isSubmitting}
         className="text-sm font-medium text-text-muted hover:text-text transition-colors disabled:opacity-50"
@@ -195,7 +188,7 @@ function AddClientForm({ onClose, onAddClient }) {
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
-      <form id="add-client-form" onSubmit={handleSubmit} noValidate>
+      <form id="add-client-form" onSubmit={handleSubmit(onSubmit)} noValidate>
         {/* Client Information */}
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
@@ -226,12 +219,10 @@ function AddClientForm({ onClose, onAddClient }) {
                   key={status}
                   type="button"
                   onClick={() =>
-                    handleChange({
-                      target: { name: "paymentStatus", value: status },
-                    })
+                    setValue("paymentStatus", status, { shouldValidate: true })
                   }
                   className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${
-                    formData.paymentStatus === status
+                    paymentStatus === status
                       ? "bg-active-bg border-select-blue text-select-blue"
                       : "bg-white border-border text-text-muted hover:bg-bg-soft"
                   }`}
@@ -242,7 +233,7 @@ function AddClientForm({ onClose, onAddClient }) {
             </div>
             {errors.paymentStatus && (
               <p className="text-red-500 text-[11px] mt-1">
-                {errors.paymentStatus}
+                {errors.paymentStatus.message}
               </p>
             )}
           </div>

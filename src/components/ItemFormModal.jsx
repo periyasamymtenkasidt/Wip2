@@ -18,6 +18,45 @@ import {
   Ruler,
   Calculator,
 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
+import InputField from "./InputField";
+
+const itemFormSchema = yup.object().shape({
+  description: yup
+    .string()
+    .required("Item name is required")
+    .trim()
+    .min(1, "Item name is required"),
+  spec: yup.string().trim(),
+  hsn: yup.string().trim(),
+  rate: yup
+    .number()
+    .transform((v, orig) => (orig === "" ? 0 : v))
+    .min(0, "Rate cannot be negative")
+    .typeError("Rate must be a number"),
+  length: yup
+    .number()
+    .transform((v, orig) => (orig === "" ? 0 : v))
+    .min(0, "Length cannot be negative")
+    .typeError("Length must be a number"),
+  breadth: yup
+    .number()
+    .transform((v, orig) => (orig === "" ? 0 : v))
+    .min(0, "Width cannot be negative")
+    .typeError("Width must be a number"),
+  height: yup
+    .number()
+    .transform((v, orig) => (orig === "" ? 0 : v))
+    .min(0, "Height cannot be negative")
+    .typeError("Height must be a number"),
+  qty: yup
+    .number()
+    .transform((v, orig) => (orig === "" ? 0 : v))
+    .min(0, "Qty cannot be negative")
+    .typeError("Qty must be a number"),
+});
 import {
   listLibrary,
   blankLibraryItem,
@@ -72,13 +111,42 @@ const ItemFormModal = ({
   showCategory = true,
   showTags = true,
 }) => {
-  const [form, setForm] = useState({
+  const defaults = {
     ...blankLibraryItem(),
     ...initial,
+  };
+
+  // react-hook-form manages the top-level validated fields
+  const {
+    register,
+    handleSubmit: rhfHandleSubmit,
+    setValue: rhfSetValue,
+    watch,
+    reset: rhfReset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(itemFormSchema),
+    defaultValues: {
+      description: defaults.description || "",
+      spec: defaults.spec || "",
+      hsn: defaults.hsn || "",
+      rate: defaults.rate || 0,
+      length: defaults.length || 0,
+      breadth: defaults.breadth || 0,
+      height: defaults.height || 0,
+      qty: defaults.qty || 0,
+    },
+  });
+
+  // Remaining fields managed via useState (dimensions with custom display
+  // logic, dynamic arrays for materials/tags, selects that feed computed values)
+  const [form, setForm] = useState({
+    ...defaults,
     materials: initial?.materials ? [...initial.materials] : [],
     tags: initial?.tags ? [...initial.tags] : [],
   });
   const [pickerOpen, setPickerOpen] = useState(false);
+
 
   const update = (changes) => setForm((p) => ({ ...p, ...changes }));
   const addMaterial = () =>
@@ -95,6 +163,16 @@ const ItemFormModal = ({
   // Copy fields from a saved library item into the current form. Keeps the
   // current id so an in-progress edit stays attached to its record.
   const fillFromLibrary = (lib) => {
+    rhfReset({
+      description: lib.description || "",
+      spec: lib.spec || "",
+      hsn: lib.hsn || "",
+      rate: lib.rate || 0,
+      length: lib.length || 0,
+      breadth: lib.breadth || 0,
+      height: lib.height || 0,
+      qty: lib.qty || 0,
+    });
     setForm((p) => ({
       ...blankLibraryItem(),
       ...lib,
@@ -106,27 +184,30 @@ const ItemFormModal = ({
     setPickerOpen(false);
   };
 
-  const handleSubmit = () => {
-    if (!form.description.trim()) {
-      alert("Item name is required");
-      return;
-    }
+  const handleFormSubmit = (validatedData) => {
+    // Merge react-hook-form validated data with useState-managed data
     onSave({
       ...form,
-      rate: Number(form.rate) || 0,
+      description: validatedData.description,
+      spec: validatedData.spec || "",
+      hsn: validatedData.hsn || "",
+      rate: Number(validatedData.rate) || 0,
       gstPercent: Number(form.gstPercent) || 18,
-      length: Number(form.length) || 0,
-      breadth: Number(form.breadth) || 0,
-      height: Number(form.height) || 0,
-      qty: Number(form.qty) || 0,
+      length: Number(validatedData.length) || 0,
+      breadth: Number(validatedData.breadth) || 0,
+      height: Number(validatedData.height) || 0,
+      qty: Number(validatedData.qty) || 0,
     });
   };
 
   const isEditing = !!initial?.id;
   const unitLabel = UNITS.find((u) => u.code === form.unit)?.label || form.unit;
-  const derivedArea = computeLibraryItemArea(form);
-  const derivedQty = computeLibraryItemQty(form);
-  const derivedAmount = computeLibraryItemAmount(form);
+  // Use the watched rhf fields + other form fields for computation
+  const watchedFields = watch();
+  const computeForm = { ...form, ...watchedFields };
+  const derivedArea = computeLibraryItemArea(computeForm);
+  const derivedQty = computeLibraryItemQty(computeForm);
+  const derivedAmount = computeLibraryItemAmount(computeForm);
   const dimsHint =
     form.unit === "sqft" || form.unit === "sqm"
       ? "Area = L × W · Qty overrides for wastage"
@@ -175,23 +256,23 @@ const ItemFormModal = ({
         <div className="p-5 space-y-4 overflow-y-auto">
           <div>
             <Label>Item Name *</Label>
-            <input
-              type="text"
-              value={form.description}
-              onChange={(e) => update({ description: e.target.value })}
+            <InputField
+              name="description"
+              register={register("description")}
               placeholder="e.g. False ceiling area"
-              className={inputBase}
+              error={errors.description?.message}
             />
           </div>
 
           <div>
             <Label>Detailed Specification</Label>
-            <textarea
-              value={form.spec || ""}
-              onChange={(e) => update({ spec: e.target.value })}
+            <InputField
+              type="textarea"
+              name="spec"
+              register={register("spec")}
               rows={3}
               placeholder="e.g. Supply, transport and Installation of Gypsum ceiling. 12.5 mm thk Gyproc board with Gypliner channel sections at every 450mm with fixing brackets, angles and channels connectors also with premium emulsion paint finish."
-              className={`${inputBase} resize-none`}
+              error={errors.spec?.message}
             />
           </div>
 
@@ -212,13 +293,11 @@ const ItemFormModal = ({
             )}
             <div>
               <Label>HSN Code</Label>
-              <input
-                type="text"
-                value={form.hsn}
-                onChange={(e) => update({ hsn: e.target.value })}
+              <InputField
+                name="hsn"
+                register={register("hsn")}
                 placeholder="9403"
-                list="hsn-suggestions-shared"
-                className={`${inputBase} tabular-nums`}
+                error={errors.hsn?.message}
               />
               <datalist id="hsn-suggestions-shared">
                 {HSN_SUGGESTIONS.map((h) => (
@@ -261,12 +340,12 @@ const ItemFormModal = ({
               <span className="text-[9.5px] text-text-subtle">{dimsHint}</span>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
-              <NumField label="Length" value={form.length} onChange={(v) => update({ length: v })} />
-              <NumField label="Width" value={form.breadth} onChange={(v) => update({ breadth: v })} />
-              <NumField label="Height" value={form.height} onChange={(v) => update({ height: v })} />
+              <NumField label="Length" value={watchedFields.length} onChange={(v) => rhfSetValue("length", v, { shouldValidate: true })} error={errors.length?.message} />
+              <NumField label="Width" value={watchedFields.breadth} onChange={(v) => rhfSetValue("breadth", v, { shouldValidate: true })} error={errors.breadth?.message} />
+              <NumField label="Height" value={watchedFields.height} onChange={(v) => rhfSetValue("height", v, { shouldValidate: true })} error={errors.height?.message} />
               <ReadOnlyField label="Area" value={derivedArea} unitLabel={unitLabel} />
-              <NumField label="Qty" value={form.qty} onChange={(v) => update({ qty: v })} tabular bold placeholder={derivedArea > 0 ? String(derivedArea) : "0"} />
-              <NumField label={`Rate (₹/${unitLabel})`} value={form.rate} onChange={(v) => update({ rate: v })} tabular prefix="₹" />
+              <NumField label="Qty" value={watchedFields.qty} onChange={(v) => rhfSetValue("qty", v, { shouldValidate: true })} tabular bold placeholder={derivedArea > 0 ? String(derivedArea) : "0"} error={errors.qty?.message} />
+              <NumField label={`Rate (₹/${unitLabel})`} value={watchedFields.rate} onChange={(v) => rhfSetValue("rate", v, { shouldValidate: true })} tabular prefix="₹" error={errors.rate?.message} />
             </div>
           </div>
 
@@ -375,7 +454,7 @@ const ItemFormModal = ({
           </button>
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={rhfHandleSubmit(handleFormSubmit)}
             className="px-4 py-1.5 rounded-lg bg-linear-to-br from-select-blue to-primary text-white text-[12px] font-semibold shadow-md hover:scale-[1.02] transition-all flex items-center gap-1.5"
           >
             <Check size={12} /> {resolvedSubmit}
@@ -396,7 +475,7 @@ const ItemFormModal = ({
 
 // Number input that hides "0" so users can type without first deleting the
 // placeholder. Used in the Dimensions / Area / Qty / Rate row.
-const NumField = ({ label, value, onChange, tabular, bold, prefix, placeholder = "0" }) => {
+const NumField = ({ label, value, onChange, tabular, bold, prefix, placeholder = "0", error }) => {
   const [focused, setFocused] = useState(false);
   const display =
     value === 0 || value === "0" || value === "" || value == null
@@ -425,9 +504,10 @@ const NumField = ({ label, value, onChange, tabular, bold, prefix, placeholder =
             onChange(e.target.value === "" ? 0 : Number(e.target.value))
           }
           placeholder={placeholder}
-          className={`${inputBase} ${prefix ? "pl-6" : ""} ${tabular ? "tabular-nums text-right" : ""} ${bold ? "font-bold" : ""}`}
+          className={`${inputBase} ${prefix ? "pl-6" : ""} ${tabular ? "tabular-nums text-right" : ""} ${bold ? "font-bold" : ""} ${error ? "border-red-500 focus:border-red-500 focus:ring-red-500/15" : ""}`}
         />
       </div>
+      {error && <p className="text-red-500 text-[10px] mt-1">{error}</p>}
     </div>
   );
 };

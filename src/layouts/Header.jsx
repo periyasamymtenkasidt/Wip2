@@ -36,11 +36,11 @@ const Header = () => {
               "contrast(1.25) saturate(1.15) drop-shadow(0 1px 1.5px rgba(139, 105, 20, 0.18))",
           }}
         />
-        <div className="relative hidden sm:flex flex-col leading-none border-l border-[#c5a367]/50 pl-3 py-1">
-          <p className="text-[9px] uppercase tracking-[0.45em] text-[#8b6914] font-bold leading-none">
+        <div className="relative hidden sm:flex flex-col leading-none border-l border-paleorange/50 pl-3 py-1">
+          <p className="text-[9px] uppercase tracking-[0.45em] text-dark-yellow font-bold leading-none">
             Architecture
           </p>
-          <p className="text-[9px] uppercase tracking-[0.45em] text-[#8b6914] font-bold mt-1.5 leading-none">
+          <p className="text-[9px] uppercase tracking-[0.45em] text-dark-yellow font-bold mt-1.5 leading-none">
             Interiors
           </p>
           <p className="text-[7px] uppercase tracking-[0.35em] text-text-subtle mt-2 leading-none">

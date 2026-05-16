@@ -158,7 +158,7 @@ const DateRangePicker = ({
     <div className="absolute right-0 top-full mt-2 bg-white border border-gray-100 shadow-xl rounded-2xl w-[380px] z-50 p-4 flex flex-col font-sans">
       {/* Header */}
       <div className="flex justify-between items-center mb-1">
-        <div className="flex items-center gap-2 text-[#001552]">
+        <div className="flex items-center gap-2 text-dark-blue">
           <CalendarIcon size={20} className="stroke-[1.5]" />
           <h4 className="text-[17px] font-semibold">Select Date Range</h4>
         </div>
@@ -183,7 +183,7 @@ const DateRangePicker = ({
               readOnly
               placeholder="Start Date"
               value={formatDateWithYear(startDate)}
-              className="outline-none border-none text-[#001552] font-medium w-full placeholder-gray-400 bg-transparent"
+              className="outline-none border-none text-dark-blue font-medium w-full placeholder-gray-400 bg-transparent"
             />
           </div>
         </div>
@@ -198,7 +198,7 @@ const DateRangePicker = ({
               readOnly
               placeholder="End Date"
               value={formatDateWithYear(endDate)}
-              className="outline-none border-none text-[#001552] font-medium w-full placeholder-gray-400 bg-transparent"
+              className="outline-none border-none text-dark-blue font-medium w-full placeholder-gray-400 bg-transparent"
             />
           </div>
         </div>
@@ -208,7 +208,7 @@ const DateRangePicker = ({
       <div className="border border-gray-100 rounded-[16px] p-3 mb-3 shadow-sm">
         {/* Calendar Header Nav */}
         <div className="flex justify-between items-center mb-2">
-          <h5 className="text-[#001552] font-medium text-[15px]">
+          <h5 className="text-dark-blue font-medium text-[15px]">
             {formatMonthYear(currentMonth)}
           </h5>
           <div className="flex gap-1 text-gray-400">
@@ -232,7 +232,7 @@ const DateRangePicker = ({
           {daysOfWeek.map((day, idx) => (
             <div
               key={idx}
-              className="text-center text-[#001552] font-semibold text-[13px] pb-1"
+              className="text-center text-dark-blue font-semibold text-[13px] pb-1"
             >
               {day}
             </div>
@@ -269,7 +269,7 @@ const DateRangePicker = ({
                 effectiveEnd &&
                 !isEndHover &&
                 dayObj.date < effectiveEnd)
-                ? "bg-[#e5eaff]"
+                ? "bg-active-bg"
                 : "";
 
             let cornerClasses = "";
@@ -282,7 +282,7 @@ const DateRangePicker = ({
             let textColor = "text-gray-700";
             if (!dayObj.isCurrentMonth) textColor = "text-gray-300";
             if (isStart || isEnd) textColor = "text-white";
-            else if (isBetween || isEndHover) textColor = "text-[#001552]"; // Dark text in light blue bg
+            else if (isBetween || isEndHover) textColor = "text-dark-blue"; // Dark text in light blue bg
 
             return (
               <div
@@ -299,13 +299,13 @@ const DateRangePicker = ({
                   onClick={() => handleDateClick(dayObj.date)}
                   className={`w-5 h-5 rounded-lg flex items-center justify-center transition-all absolute z-10 ${
                     isStart || isEnd
-                      ? "bg-[#0a2366] font-medium shadow-md"
+                      ? "bg-purple font-medium shadow-md"
                       : dayObj.isCurrentMonth
                         ? "hover:bg-gray-100"
                         : "hover:bg-transparent"
                   } ${textColor} ${
                     !isStart && !isEnd && (isBetween || isEndHover)
-                      ? "hover:bg-[#d1dbff]"
+                      ? "hover:bg-active-bg"
                       : ""
                   }`}
                 >
@@ -320,7 +320,7 @@ const DateRangePicker = ({
       {/* Footer */}
       <button
         onClick={handleApply}
-        className="w-full bg-[#0a2366] hover:bg-[#081b52] text-white font-medium py-3 rounded-[10px] transition shadow-md"
+        className="w-full bg-purple hover:bg-dark-blue text-white font-medium py-3 rounded-[10px] transition shadow-md"
       >
         Apply
       </button>

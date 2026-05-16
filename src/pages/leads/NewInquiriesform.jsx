@@ -1,8 +1,34 @@
 import { useMemo, useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
+
+const newInquirySchema = yup.object().shape({
+  fullName: yup.string().required("Full Name is required"),
+  phoneNumber: yup
+    .string()
+    .required("Phone Number is required")
+    .transform((v) => v?.replace(/\s/g, ""))
+    .matches(/^\d{10}$/, "Must be a 10-digit number"),
+  email: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+  inquirySource: yup.string().required("Inquiry Source is required"),
+  quotePreset: yup.string().required("Property Preset is required"),
+  propertyType: yup.string().required("Property Type is required"),
+  investmentRange: yup.string().required("Investment Range is required"),
+  processionDate: yup.string().required("Possession Date is required"),
+  location: yup.string().required("City / Location is required"),
+});
 import {
   getPreset,
   getPresetKeys,
@@ -56,36 +82,24 @@ const CLIENT_INFO_FIELDS = [
     label: "Full Name",
     type: "text",
     placeholder: "Enter full name",
-    required: true,
   },
   {
     name: "phoneNumber",
     label: "Phone Number",
     type: "tel",
     placeholder: "10-digit number",
-    required: true,
-    validation: (val) =>
-      !/^\d{10}$/.test(val.replace(/\s/g, ""))
-        ? "Must be a 10-digit number"
-        : null,
   },
   {
     name: "email",
     label: "Email Address",
     type: "email",
     placeholder: "example@domain.com",
-    required: true,
-    validation: (val) =>
-      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim())
-        ? "Enter a valid email address"
-        : null,
   },
   {
     name: "inquirySource",
     label: "Inquiry Source",
     type: "select",
     options: inquirySources,
-    required: true,
   },
 ];
 
@@ -94,7 +108,6 @@ const PROJECT_DETAIL_FIELDS = [
     name: "processionDate",
     label: "Possession Date",
     type: "date",
-    required: true,
   },
   {
     name: "location",
@@ -102,19 +115,7 @@ const PROJECT_DETAIL_FIELDS = [
     type: "text",
     placeholder: "e.g. Chennai, Tamil Nadu",
     icon: GrLocation,
-    required: true,
   },
-];
-
-// Fields that gate submission — collected across all sections.
-// sizeRange comes from the chosen preset; propertyType is picked from
-// the preset's applicable types list.
-const REQUIRED_FIELDS = [
-  ...CLIENT_INFO_FIELDS,
-  ...PROJECT_DETAIL_FIELDS,
-  { name: "quotePreset", label: "Property Preset", required: true },
-  { name: "propertyType", label: "Property Type", required: true },
-  { name: "investmentRange", label: "Investment Range", required: true },
 ];
 
 const SectionHeader = ({ children, hint }) => (
@@ -133,16 +134,31 @@ const formatLakhs = (rupees) => `₹${(rupees / 100000).toFixed(1)}L`;
 
 function NewInquiriesform({ onClose, onAddLead }) {
   const presetKeys = useMemo(() => getPresetKeys(), []);
-  const [formData, setFormData] = useState({
-    ...INITIAL_FORM_STATE,
-    ...buildPresetState(presetKeys.includes(DEFAULT_PRESET) ? DEFAULT_PRESET : presetKeys[0]),
+  const defaultPresetKey = presetKeys.includes(DEFAULT_PRESET) ? DEFAULT_PRESET : presetKeys[0];
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(newInquirySchema),
+    defaultValues: {
+      ...INITIAL_FORM_STATE,
+      ...buildPresetState(defaultPresetKey),
+    },
   });
-  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const quotePreset = watch("quotePreset");
+  const propertyType = watch("propertyType");
+  const investmentRange = watch("investmentRange");
+
   const activePreset = useMemo(
-    () => getPreset(formData.quotePreset),
-    [formData.quotePreset],
+    () => getPreset(quotePreset),
+    [quotePreset],
   );
 
   const presetTotals = useMemo(
@@ -153,8 +169,8 @@ function NewInquiriesform({ onClose, onAddLead }) {
   // Property-type multiplier scales the preset's baseline (penthouse may
   // be 1.2×, studio 0.85×, etc.). Falls back to 1.0 when not configured.
   const typeMultiplier = useMemo(
-    () => getMultiplierFor(activePreset, formData.propertyType),
-    [activePreset, formData.propertyType],
+    () => getMultiplierFor(activePreset, propertyType),
+    [activePreset, propertyType],
   );
 
   const effectiveBaseline = (presetTotals?.grandTotal || 0) * typeMultiplier;
@@ -166,55 +182,31 @@ function NewInquiriesform({ onClose, onAddLead }) {
   const investmentBands = useMemo(() => {
     const bands = generateInvestmentBands(effectiveBaseline);
     if (
-      formData.investmentRange &&
-      !bands.includes(formData.investmentRange)
+      investmentRange &&
+      !bands.includes(investmentRange)
     ) {
-      return [formData.investmentRange, ...bands];
+      return [investmentRange, ...bands];
     }
     return bands;
-  }, [effectiveBaseline, formData.investmentRange]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  }, [effectiveBaseline, investmentRange]);
 
   const handlePresetChange = (e) => {
     const key = e.target.value;
-    setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
-    setErrors((prev) => ({ ...prev, propertyType: "", quoteSizeRange: "" }));
+    const presetState = buildPresetState(key);
+    setValue("quotePreset", presetState.quotePreset, { shouldValidate: true });
+    setValue("quoteSizeRange", presetState.quoteSizeRange);
+    setValue("propertyType", presetState.propertyType, { shouldValidate: true });
   };
 
-  const validate = () => {
-    const newErrors = {};
-    REQUIRED_FIELDS.forEach((f) => {
-      const val = formData[f.name];
-      if (f.required && (!val || !val.toString().trim())) {
-        newErrors[f.name] = `${f.label} is required`;
-      } else if (f.validation) {
-        const msg = f.validation(val);
-        if (msg) newErrors[f.name] = msg;
-      }
-    });
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       // Older consumers (Leads.jsx, table column "scope") still read
       // `projectScope` — derive it from the property type so the column
       // shows something meaningful without re-asking the user.
       await onAddLead?.({
-        ...formData,
-        projectScope: formData.propertyType,
+        ...data,
+        projectScope: data.propertyType,
       });
       onClose?.();
     } finally {
@@ -228,9 +220,8 @@ function NewInquiriesform({ onClose, onAddLead }) {
       name={cfg.name}
       label={cfg.label}
       type={cfg.type}
-      value={formData[cfg.name]}
-      onChange={handleChange}
-      error={errors[cfg.name]}
+      register={register(cfg.name)}
+      error={errors[cfg.name]?.message}
       placeholder={cfg.placeholder}
       options={cfg.options}
       icon={cfg.icon}
@@ -242,11 +233,10 @@ function NewInquiriesform({ onClose, onAddLead }) {
       <button
         type="button"
         onClick={() => {
-          setFormData({
+          reset({
             ...INITIAL_FORM_STATE,
-            ...buildPresetState(presetKeys.includes(DEFAULT_PRESET) ? DEFAULT_PRESET : presetKeys[0]),
+            ...buildPresetState(defaultPresetKey),
           });
-          setErrors({});
         }}
         disabled={isSubmitting}
         className="text-sm font-medium text-text-muted hover:text-text transition-colors disabled:opacity-50"
@@ -286,7 +276,7 @@ function NewInquiriesform({ onClose, onAddLead }) {
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
-      <form id="new-inquiry-form" onSubmit={handleSubmit} noValidate>
+      <form id="new-inquiry-form" onSubmit={handleSubmit(onSubmit)} noValidate>
         {/* ── Client Information ─────────────────────────────────────── */}
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
@@ -310,19 +300,18 @@ function NewInquiriesform({ onClose, onAddLead }) {
               name="quotePreset"
               label="Property Preset"
               type="select"
-              value={formData.quotePreset}
+              register={register("quotePreset")}
               onChange={handlePresetChange}
               options={presetKeys}
-              error={errors.quotePreset}
+              error={errors.quotePreset?.message}
             />
             <InputField
               name="propertyType"
               label="Property Type"
               type="select"
-              value={formData.propertyType}
-              onChange={handleChange}
+              register={register("propertyType")}
               options={activePreset?.propertyTypes || []}
-              error={errors.propertyType}
+              error={errors.propertyType?.message}
             />
           </div>
 
@@ -348,7 +337,7 @@ function NewInquiriesform({ onClose, onAddLead }) {
                     <span className="text-text-subtle">incl. GST</span>
                     {typeMultiplier !== 1 && (
                       <span className="text-[10px] font-bold text-select-blue bg-active-bg px-1.5 py-0.5 rounded-md ml-0.5">
-                        ×{typeMultiplier.toFixed(2)} {formData.propertyType}
+                        ×{typeMultiplier.toFixed(2)} {propertyType}
                       </span>
                     )}
                   </span>
@@ -379,15 +368,14 @@ function NewInquiriesform({ onClose, onAddLead }) {
               name="investmentRange"
               label="Investment Range"
               type="select"
-              value={formData.investmentRange}
-              onChange={handleChange}
+              register={register("investmentRange")}
               options={investmentBands}
               placeholder={
                 investmentBands.length
                   ? "Choose a range"
                   : "Pick a preset first"
               }
-              error={errors.investmentRange}
+              error={errors.investmentRange?.message}
             />
             {PROJECT_DETAIL_FIELDS.slice(0, 1).map(field)}
           </div>
@@ -405,9 +393,8 @@ function NewInquiriesform({ onClose, onAddLead }) {
             type="textarea"
             name="architecturalNotes"
             label="Architectural Notes"
-            value={formData.architecturalNotes}
-            onChange={handleChange}
-            error={errors.architecturalNotes}
+            register={register("architecturalNotes")}
+            error={errors.architecturalNotes?.message}
             placeholder="Mention design preferences, mood, or constraints…"
             rows={4}
           />

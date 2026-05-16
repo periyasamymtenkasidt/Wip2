@@ -63,7 +63,7 @@ const LostReasonModal = ({ onClose, onConfirm }) => {
             <FiXCircle size={22} />
           </div>
           <div>
-            <h2 className="text-[18px] font-bold text-[#1e293b]">
+            <h2 className="text-[18px] font-bold text-darkgray">
               Mark Inquiry as Lost
             </h2>
             <p className="text-[12px] text-text-muted mt-0.5">
@@ -143,7 +143,11 @@ const formatDocSize = (snapshot) => {
 const formatDocDate = (iso) => {
   if (!iso) return "—";
   const d = new Date(iso);
-  return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" });
+  return d.toLocaleDateString("en-IN", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 };
 
 const DocumentsCard = ({ documents, onOpen }) => {
@@ -162,9 +166,9 @@ const DocumentsCard = ({ documents, onOpen }) => {
   return (
     <div className="bg-white rounded-[20px] p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-[17px] font-bold text-[#1e293b]">Documents</h3>
+        <h3 className="text-[17px] font-bold text-darkgray">Documents</h3>
         {documents.length > 0 && (
-          <span className="px-2.5 py-1 bg-[#eff6ff] text-[#1d4ed8] text-[10px] font-bold tracking-wider rounded-md">
+          <span className="px-2.5 py-1 bg-active-bg text-select-blue text-[10px] font-bold tracking-wider rounded-md">
             {documents.length}
           </span>
         )}
@@ -172,7 +176,7 @@ const DocumentsCard = ({ documents, onOpen }) => {
 
       {documents.length === 0 ? (
         <div className="rounded-[14px] border border-dashed border-border bg-bg-soft px-4 py-8 text-center">
-          <div className="w-10 h-10 mx-auto bg-[#eff6ff] text-[#3b82f6] rounded-[10px] flex items-center justify-center mb-2">
+          <div className="w-10 h-10 mx-auto bg-active-bg text-sky-blue rounded-[10px] flex items-center justify-center mb-2">
             <FiFileText size={18} />
           </div>
           <p className="text-[12px] font-semibold text-text">
@@ -187,7 +191,7 @@ const DocumentsCard = ({ documents, onOpen }) => {
           {documents.map((doc) => (
             <div
               key={doc.docId}
-              className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-[#bae6fd] hover:bg-[#f8fafc] transition-all group"
+              className="flex items-center justify-between p-3.5 border border-bg-soft rounded-[14px] hover:border-sky-blue/40 hover:bg-palewhite transition-all group"
             >
               <button
                 type="button"
@@ -195,11 +199,11 @@ const DocumentsCard = ({ documents, onOpen }) => {
                 className="flex items-center gap-3.5 min-w-0 text-left flex-1 cursor-pointer"
                 title="Preview quote"
               >
-                <div className="w-10 h-10 bg-[#eff6ff] text-[#3b82f6] rounded-[10px] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 bg-active-bg text-sky-blue rounded-[10px] flex items-center justify-center shrink-0">
                   <FiFileText size={18} />
                 </div>
                 <div className="truncate pr-2">
-                  <p className="text-[13px] font-bold text-[#1e293b] truncate leading-tight mb-1">
+                  <p className="text-[13px] font-bold text-darkgray truncate leading-tight mb-1">
                     {doc.fileName}
                   </p>
                   <p className="text-[11px] font-medium text-gray-400">
@@ -212,7 +216,7 @@ const DocumentsCard = ({ documents, onOpen }) => {
                 type="button"
                 onClick={(e) => handleDownload(e, doc)}
                 disabled={downloadingId === doc.docId}
-                className="text-gray-400 hover:text-[#3b82f6] disabled:opacity-50 transition-colors shrink-0 ml-2 p-1"
+                className="text-gray-400 hover:text-sky-blue disabled:opacity-50 transition-colors shrink-0 ml-2 p-1"
                 title="Download as PNG"
               >
                 <FiDownload size={18} />
@@ -239,7 +243,7 @@ const activityMeta = (entry) => {
       title: `Proposal emailed to ${entry.to}`,
       body: `${entry.subject ? `Subject: ${entry.subject}` : ""}${attachLine}`,
       icon: <FiSend size={12} />,
-      bg: "bg-[#f0f9ff]",
+      bg: "bg-active-bg",
       iconColor: "text-blue-500",
     };
   }
@@ -287,15 +291,47 @@ const activityMeta = (entry) => {
   // status transition
   const to = entry.to?.toLowerCase();
   const map = {
-    qualified: { icon: <FiCheck size={12} />, bg: "bg-green-50", iconColor: "text-green-600" },
-    proposal: { icon: <FiFileText size={12} />, bg: "bg-blue-50", iconColor: "text-blue-600" },
-    negotiation: { icon: <FiTrendingUp size={12} />, bg: "bg-amber-50", iconColor: "text-amber-600" },
-    won: { icon: <FiAward size={12} />, bg: "bg-emerald-50", iconColor: "text-emerald-600" },
-    converted: { icon: <FiUserCheck size={12} />, bg: "bg-teal-50", iconColor: "text-teal-600" },
-    "on hold": { icon: <FiPause size={12} />, bg: "bg-gray-100", iconColor: "text-gray-500" },
-    lost: { icon: <FiXCircle size={12} />, bg: "bg-red-50", iconColor: "text-red-600" },
+    qualified: {
+      icon: <FiCheck size={12} />,
+      bg: "bg-green-50",
+      iconColor: "text-green-600",
+    },
+    proposal: {
+      icon: <FiFileText size={12} />,
+      bg: "bg-blue-50",
+      iconColor: "text-blue-600",
+    },
+    negotiation: {
+      icon: <FiTrendingUp size={12} />,
+      bg: "bg-amber-50",
+      iconColor: "text-amber-600",
+    },
+    won: {
+      icon: <FiAward size={12} />,
+      bg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
+    converted: {
+      icon: <FiUserCheck size={12} />,
+      bg: "bg-teal-50",
+      iconColor: "text-teal-600",
+    },
+    "on hold": {
+      icon: <FiPause size={12} />,
+      bg: "bg-gray-100",
+      iconColor: "text-gray-500",
+    },
+    lost: {
+      icon: <FiXCircle size={12} />,
+      bg: "bg-red-50",
+      iconColor: "text-red-600",
+    },
   };
-  const styling = map[to] || { icon: <FiCheck size={12} />, bg: "bg-gray-100", iconColor: "text-gray-500" };
+  const styling = map[to] || {
+    icon: <FiCheck size={12} />,
+    bg: "bg-gray-100",
+    iconColor: "text-gray-500",
+  };
   const body =
     entry.to === "Lost" && entry.lostReason
       ? `Reason: ${entry.lostReason}${entry.lostNote ? ` — ${entry.lostNote}` : ""}`
@@ -330,7 +366,7 @@ const LeadEdit = () => {
         console.error(e);
       }
     }
-   
+
     const allLeads = [...newLeads, ...TableData];
     return allLeads.find((item) => item.proposalId === id) || null;
   });
@@ -535,7 +571,9 @@ const LeadEdit = () => {
   const onLinearPath = isPipelineStep(lead.status);
   // While off-path (Lost / On Hold) we keep the prior step highlighted up to
   // wherever the lead got — by default treat as Inquiry.
-  const currentStepIdx = onLinearPath ? Math.max(getStepIndex(lead.status), 0) : 0;
+  const currentStepIdx = onLinearPath
+    ? Math.max(getStepIndex(lead.status), 0)
+    : 0;
   const isLost = lead.status?.toLowerCase() === "lost";
   const isOnHold = lead.status?.toLowerCase() === "on hold";
 
@@ -546,13 +584,13 @@ const LeadEdit = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate(-1)}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-border hover:bg-gray-50 hover:border-[#1E3A8A]/30 text-gray-500 hover:text-[#1E3A8A] transition-all shadow-sm cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-border hover:bg-gray-50 hover:border-select-blue/30 text-gray-500 hover:text-select-blue transition-all shadow-sm cursor-pointer"
             title="Go back"
           >
             <FiArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-[26px] font-bold text-[#1e293b] leading-tight">
+            <h1 className="text-[26px] font-bold text-darkgray leading-tight">
               New Inquiry
             </h1>
             <p className="text-[13px] text-gray-500 mt-1">
@@ -565,7 +603,7 @@ const LeadEdit = () => {
           {lead.status?.toLowerCase() === "inquiry" && (
             <button
               onClick={() => transitionStatus("Qualified")}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-dark-blue text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
             >
               <FiCheck size={16} /> Mark Qualified
             </button>
@@ -573,7 +611,7 @@ const LeadEdit = () => {
           {lead.status?.toLowerCase() === "qualified" && (
             <button
               onClick={() => setShowProposalModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-dark-blue text-white cursor-pointer rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm transition-all"
             >
               <FiSend size={16} /> Send Proposal
             </button>
@@ -582,7 +620,7 @@ const LeadEdit = () => {
             <>
               <button
                 onClick={() => setShowProposalModal(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
               >
                 <FiMail size={16} /> Resend Proposal
               </button>
@@ -597,7 +635,7 @@ const LeadEdit = () => {
           {lead.status?.toLowerCase() === "negotiation" && (
             <button
               onClick={() => setShowProposalModal(true)}
-              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
             >
               <FiMail size={16} /> Resend Proposal
             </button>
@@ -626,36 +664,35 @@ const LeadEdit = () => {
             (isOnHold ? (
               <button
                 onClick={() => transitionStatus("Qualified")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
               >
                 <FiPlay size={16} /> Resume
               </button>
             ) : (
               <button
                 onClick={() => transitionStatus("On Hold")}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
               >
                 <FiPause size={16} /> Put on Hold
               </button>
             ))}
 
           {/* Mark Lost — available until the deal is closed (won/converted) */}
-          {!isLost &&
-            lead.status?.toLowerCase() !== "won" && (
-              <button
-                onClick={() => setShowLostModal(true)}
-                className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-200 cursor-pointer rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 shadow-sm transition-all"
-              >
-                <FiXCircle size={16} /> Mark Lost
-              </button>
-            )}
+          {!isLost && lead.status?.toLowerCase() !== "won" && (
+            <button
+              onClick={() => setShowLostModal(true)}
+              className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-200 cursor-pointer rounded-xl text-sm font-semibold text-red-500 hover:bg-red-50 shadow-sm transition-all"
+            >
+              <FiXCircle size={16} /> Mark Lost
+            </button>
+          )}
 
           <button
             onClick={() => {
               setLogTab("call");
               setShowLogModal(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
           >
             <FiPhone size={16} /> Log Call
           </button>
@@ -664,13 +701,13 @@ const LeadEdit = () => {
               setLogTab("note");
               setShowLogModal(true);
             }}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
           >
             <FiEdit3 size={16} /> Add Note
           </button>
           <button
             onClick={() => setIsEditFormOpen(true)}
-            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-[#1e293b] hover:bg-gray-50 shadow-sm transition-all"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-border cursor-pointer rounded-xl text-sm font-semibold text-darkgray hover:bg-gray-50 shadow-sm transition-all"
           >
             <FiEdit2 size={16} /> Edit Inquiry
           </button>
@@ -701,7 +738,7 @@ const LeadEdit = () => {
                   </span>
                 </div>
                 {/* Replaced generic lead.clientName with the exact project name from the mockup, while still keeping dynamic if you want, but user asked for "exact ui in the above image". So we will make it look exactly like the image, though using lead data where appropriate. */}
-                <h2 className="text-[28px] font-bold text-[#001552] mb-3 tracking-tight">
+                <h2 className="text-[28px] font-bold text-dark-blue mb-3 tracking-tight">
                   {lead.clientName}
                 </h2>
                 <p className="text-[15px] text-gray-500 flex items-center gap-2">
@@ -710,7 +747,7 @@ const LeadEdit = () => {
                 </p>
               </div>
               <div className="flex gap-3">
-                <button className="px-6 py-2.5 bg-[#001552] text-white rounded-xl text-[13px] font-semibold shadow-md shadow-[#001552]/20 hover:bg-blue-950 transition-colors">
+                <button className="px-6 py-2.5 bg-dark-blue text-white rounded-xl text-[13px] font-semibold shadow-md shadow-dark-blue/20 hover:bg-blue-950 transition-colors">
                   Schedule
                 </button>
                 <button
@@ -719,7 +756,7 @@ const LeadEdit = () => {
                     if (documents[0]) setPreviewDoc(documents[0]);
                   }}
                   disabled={documents.length === 0}
-                  className="px-6 py-2.5 bg-white border border-[#001552] text-[#001552] rounded-xl text-[13px] font-semibold hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-6 py-2.5 bg-white border border-dark-blue text-dark-blue rounded-xl text-[13px] font-semibold hover:bg-gray-50 transition-colors cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   title={
                     documents.length === 0
                       ? "Send a proposal first to generate a quote"
@@ -732,11 +769,13 @@ const LeadEdit = () => {
             </div>
 
             {/* Stepper — dimmed when the lead is off-path (Lost / On Hold) */}
-            <div className={`mt-14 mb-2 relative ${onLinearPath ? "" : "opacity-50"}`}>
+            <div
+              className={`mt-14 mb-2 relative ${onLinearPath ? "" : "opacity-50"}`}
+            >
               <div className="absolute top-1/2 left-0 w-full h-[2px] bg-gray-200 -translate-y-1/2 rounded-full"></div>
               {/* Dynamic progress line */}
               <div
-                className="absolute top-1/2 left-0 h-[3px] bg-[#001552] -translate-y-1/2 rounded-full transition-all duration-500"
+                className="absolute top-1/2 left-0 h-[3px] bg-dark-blue -translate-y-1/2 rounded-full transition-all duration-500"
                 style={{
                   width: `${(currentStepIdx / (steps.length - 1)) * 100}%`,
                 }}
@@ -750,7 +789,7 @@ const LeadEdit = () => {
                       <div
                         className={`w-6 h-6 rounded-full flex items-center justify-center z-10 border-[3px] border-white ring-2 ring-white shadow-sm transition-colors ${
                           isCompleted
-                            ? "bg-[#001552] text-white"
+                            ? "bg-dark-blue text-white"
                             : "bg-gray-200 text-transparent"
                         }`}
                       >
@@ -758,7 +797,7 @@ const LeadEdit = () => {
                       </div>
                       <span
                         className={`absolute top-8 text-[11px] font-bold ${
-                          isCompleted ? "text-[#001552]" : "text-gray-400"
+                          isCompleted ? "text-dark-blue" : "text-gray-400"
                         }`}
                       >
                         {step}
@@ -811,7 +850,7 @@ const LeadEdit = () => {
                 <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-3">
                   Investment Range
                 </p>
-                <h3 className="text-3xl font-bold text-[#001552] leading-tight">
+                <h3 className="text-3xl font-bold text-dark-blue leading-tight">
                   {lead.investment?.includes("-") ? (
                     <>
                       {lead.investment.split("-")[0].trim()} - <br />{" "}
@@ -842,7 +881,7 @@ const LeadEdit = () => {
             {/* Info Grid */}
             <div className="w-full md:w-[65%] grid grid-cols-2 gap-4">
               <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+                <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
                   <FiHome size={18} />
                 </div>
                 <div>
@@ -855,7 +894,7 @@ const LeadEdit = () => {
                 </div>
               </div>
               <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+                <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
                   <FiCalendar size={18} />
                 </div>
                 <div>
@@ -868,7 +907,7 @@ const LeadEdit = () => {
                 </div>
               </div>
               <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+                <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
                   <FiLayers size={18} />
                 </div>
                 <div>
@@ -881,7 +920,7 @@ const LeadEdit = () => {
                 </div>
               </div>
               <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+                <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
                   <FiMessageCircle size={18} />
                 </div>
                 <div>
@@ -894,7 +933,7 @@ const LeadEdit = () => {
                 </div>
               </div>
               <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4 col-span-2">
-                <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+                <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
                   <FiPhone size={18} />
                 </div>
                 <div>
@@ -911,7 +950,7 @@ const LeadEdit = () => {
 
           {/* Card 3: Activity Timeline (driven by status changes) */}
           <div className="bg-white rounded-[20px] p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
-            <h3 className="flex items-center gap-2 text-[17px] font-bold text-[#1e293b] mb-8">
+            <h3 className="flex items-center gap-2 text-[17px] font-bold text-darkgray mb-8">
               <FiFileText size={20} className="text-gray-500" /> Activity
               Timeline
             </h3>
@@ -937,7 +976,7 @@ const LeadEdit = () => {
                         {meta.icon}
                       </div>
                       <div className="flex justify-between items-start mb-1.5">
-                        <h4 className="font-bold text-[#1e293b] text-[14px]">
+                        <h4 className="font-bold text-darkgray text-[14px]">
                           {meta.title}
                         </h4>
                         <span className="text-[11px] font-medium text-gray-400 tracking-wide">
@@ -969,23 +1008,23 @@ const LeadEdit = () => {
                   className="w-full h-full object-cover"
                 />
               </div>
-              <div className="absolute bottom-2 right-2 w-4 h-4 bg-[#22c55e] border-[3px] border-white rounded-full"></div>
+              <div className="absolute bottom-2 right-2 w-4 h-4 bg-emarold border-[3px] border-white rounded-full"></div>
             </div>
-            <h3 className="text-[22px] font-bold text-[#001552] mb-1">
+            <h3 className="text-[22px] font-bold text-dark-blue mb-1">
               {lead.clientName}
             </h3>
             <p className="text-[13px] font-medium text-gray-500 mb-8">
               Lead Interior Designer
             </p>
 
-            <button className="w-full py-3 bg-white border-[1.5px] border-border hover:border-[#001552] hover:text-[#001552] text-[#334155] rounded-[14px] text-[14px] font-bold mb-3 flex items-center justify-center gap-2.5 transition-all shadow-sm">
+            <button className="w-full py-3 bg-white border-[1.5px] border-border hover:border-dark-blue hover:text-dark-blue text-midgray rounded-[14px] text-[14px] font-bold mb-3 flex items-center justify-center gap-2.5 transition-all shadow-sm">
               <FiPhone size={18} /> Schedule Call
             </button>
             <div className="w-full flex gap-3">
-              <button className="flex-1 py-3 bg-[#f8fafc] hover:bg-bg-soft text-grey rounded-[14px] text-[13px] font-bold flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-gray-200">
+              <button className="flex-1 py-3 bg-palewhite hover:bg-bg-soft text-grey rounded-[14px] text-[13px] font-bold flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-gray-200">
                 <FiMessageCircle size={16} /> WhatsApp
               </button>
-              <button className="flex-1 py-3 bg-[#f8fafc] hover:bg-bg-soft text-grey rounded-[14px] text-[13px] font-bold flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-gray-200">
+              <button className="flex-1 py-3 bg-palewhite hover:bg-bg-soft text-grey rounded-[14px] text-[13px] font-bold flex items-center justify-center gap-2 transition-colors border border-transparent hover:border-gray-200">
                 <FiMail size={16} /> Email
               </button>
             </div>
@@ -1153,7 +1192,7 @@ const LeadEdit = () => {
             <div className="w-12 h-12 rounded-full bg-red-50 text-red-500 flex items-center justify-center mx-auto mb-4">
               <FiTrash2 size={24} />
             </div>
-            <h2 className="text-[19px] font-bold text-[#1e293b] mb-2">
+            <h2 className="text-[19px] font-bold text-darkgray mb-2">
               Delete Inquiry
             </h2>
             <p className="text-text-muted text-[14px] mb-6">

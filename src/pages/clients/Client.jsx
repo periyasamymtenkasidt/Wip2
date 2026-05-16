@@ -128,15 +128,17 @@ const Client = () => {
       render: (_, item) => {
         const statusStyles = {
           completed: "bg-green-100 text-green-700",
-          pending:   "bg-yellow-100 text-yellow-700",
-          failed:    "bg-red-100 text-red-600",
+          pending: "bg-yellow-100 text-yellow-700",
+          failed: "bg-red-100 text-red-600",
           cancelled: "bg-gray-100 text-gray-500",
         };
         const style =
           statusStyles[item.paymentStatus?.toLowerCase()] ||
           "bg-gray-100 text-gray-600";
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${style}`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium capitalize ${style}`}
+          >
             {item.paymentStatus}
           </span>
         );
@@ -155,14 +157,21 @@ const Client = () => {
         title="Clients"
         subtitle={subtitle}
         mainTabs={MAIN_TABS}
-        onMainTabChange={(idx) => { setActiveMainTab(idx); setActiveSubTab(0); }}
+        onMainTabChange={(idx) => {
+          setActiveMainTab(idx);
+          setActiveSubTab(0);
+        }}
         subTabs={isClients ? SUB_TABS[0] : undefined}
         onSubTabChange={setActiveSubTab}
         columns={isClients ? columns : []}
         data={isClients ? tableData : []}
         rowsPerPage={8}
         clickableColumns={isClients ? ["clientID", "clientName"] : []}
-        onCellClick={isClients ? (item) => navigate(`/clients/${item.clientID}`) : undefined}
+        onCellClick={
+          isClients
+            ? (item) => navigate(`/clients/${item.clientID}`)
+            : undefined
+        }
         activeRowKey="clientID"
         emptyMessage={
           isClients ? "No clients found." : "Project Caliber view — coming soon"
@@ -171,48 +180,68 @@ const Client = () => {
           isClients && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 bg-linear-to-r from-[#1E3A8A] to-[#001552] text-white rounded-lg px-5 py-2.5 text-sm font-medium"
+              className="flex items-center gap-2 bg-linear-to-r from-select-blue to-dark-blue text-white rounded-lg px-8 py-2.5 text-sm font-medium"
             >
               <FiPlusCircle />
               Add Client
             </button>
           )
         }
-        sortFields={isClients ? [
-          { key: "clientName", label: "Client Name" },
-          { key: "clientID", label: "Client ID" },
-          { key: "budget", label: "Budget" },
-          { key: "paymentStatus", label: "Payment Status" },
-        ] : undefined}
-        filterFields={isClients ? [
-          {
-            key: "paymentStatus",
-            label: "Payment Status",
-            options: ["Completed", "Pending", "Failed", "Cancelled"],
-          },
-        ] : undefined}
-        dateRangeField={isClients ? {
-          key: "joinDate",
-          parse: (value) => {
-            const parts = value?.split(".");
-            if (parts?.length === 3)
-              return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-            return null;
-          },
-        } : undefined}
-        exportConfig={isClients ? {
-          filename: "clients_export",
-          columns: [
-            { label: "Sno", key: "sno" },
-            { label: "Client ID", key: "clientID" },
-            { label: "Client Name", key: "clientName" },
-            { label: "Client Phone", key: "clientPhone" },
-            { label: "Client Email", key: "clientEmail" },
-            { label: "Location", render: (item) => `${item.location} - ${item.locationSecondary}` },
-            { label: "Budget", key: "budget" },
-            { label: "Payment Status", key: "paymentStatus" },
-          ],
-        } : undefined}
+        sortFields={
+          isClients
+            ? [
+                { key: "clientName", label: "Client Name" },
+                { key: "clientID", label: "Client ID" },
+                { key: "budget", label: "Budget" },
+                { key: "paymentStatus", label: "Payment Status" },
+              ]
+            : undefined
+        }
+        filterFields={
+          isClients
+            ? [
+                {
+                  key: "paymentStatus",
+                  label: "Payment Status",
+                  options: ["Completed", "Pending", "Failed", "Cancelled"],
+                },
+              ]
+            : undefined
+        }
+        dateRangeField={
+          isClients
+            ? {
+                key: "joinDate",
+                parse: (value) => {
+                  const parts = value?.split(".");
+                  if (parts?.length === 3)
+                    return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+                  return null;
+                },
+              }
+            : undefined
+        }
+        exportConfig={
+          isClients
+            ? {
+                filename: "clients_export",
+                columns: [
+                  { label: "Sno", key: "sno" },
+                  { label: "Client ID", key: "clientID" },
+                  { label: "Client Name", key: "clientName" },
+                  { label: "Client Phone", key: "clientPhone" },
+                  { label: "Client Email", key: "clientEmail" },
+                  {
+                    label: "Location",
+                    render: (item) =>
+                      `${item.location} - ${item.locationSecondary}`,
+                  },
+                  { label: "Budget", key: "budget" },
+                  { label: "Payment Status", key: "paymentStatus" },
+                ],
+              }
+            : undefined
+        }
       />
 
       {showForm && (

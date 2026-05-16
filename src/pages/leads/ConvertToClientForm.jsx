@@ -1,8 +1,48 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import Modal from "../../components/Modal";
 import InputField from "../../components/InputField";
+
+const convertToClientSchema = yup.object().shape({
+  clientName: yup.string().required("Client Name is required"),
+  clientPhone: yup
+    .string()
+    .required("Phone Number is required")
+    .transform((v) => v?.replace(/\s/g, ""))
+    .matches(/^\d{10}$/, "Must be a 10-digit number"),
+  clientEmail: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+  addressLine1: yup
+    .string()
+    .required("Door no, building & street is required"),
+  city: yup.string().required("City is required"),
+  state: yup.string().required("State is required"),
+  pincode: yup
+    .string()
+    .required("PIN Code is required")
+    .matches(/^\d{6}$/, "Must be a 6-digit PIN code"),
+  projectValue: yup
+    .string()
+    .required("Project value is required")
+    .test(
+      "positive",
+      "Enter a valid project value (numbers only, e.g. 7500000)",
+      (val) => {
+        const num = parseFloat((val || "").replace(/[^\d.]/g, ""));
+        return !isNaN(num) && num > 0;
+      },
+    ),
+});
 import { PAYMENT_MILESTONES } from "../../data/MilestoneConfig";
 import { formatAmount } from "../../utils/formatAmount";
 
@@ -58,56 +98,40 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
   const navigate = useNavigate();
   const { propertyType, city } = resolveLeadAddress(lead);
   const suggestedValue = parseInvestmentMidpoint(lead.investment);
-  const [formData, setFormData] = useState({
-    clientName: lead.clientName || "",
-    clientPhone: lead.phone || "",
-    clientEmail: lead.email || "",
-    location: propertyType,
-    locationSecondary: city,
-    addressLine1: "",
-    addressLine2: "",
-    city: city,
-    state: "",
-    pincode: "",
-    landmark: "",
-    projectValue: suggestedValue ? String(suggestedValue) : "",
+
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(convertToClientSchema),
+    defaultValues: {
+      clientName: lead.clientName || "",
+      clientPhone: lead.phone || "",
+      clientEmail: lead.email || "",
+      location: propertyType,
+      locationSecondary: city,
+      addressLine1: "",
+      addressLine2: "",
+      city: city,
+      state: "",
+      pincode: "",
+      landmark: "",
+      projectValue: suggestedValue ? String(suggestedValue) : "",
+    },
   });
-  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  const projectValueStr = watch("projectValue");
+  const numericValue = parseFloat((projectValueStr || "").replace(/[^\d.]/g, "")) || 0;
+  const formLocation = watch("location");
 
-  const numericValue = parseFloat(formData.projectValue.replace(/[^\d.]/g, "")) || 0;
-
-  const validate = () => {
-    const newErrors = {};
-    if (!formData.clientName.trim()) newErrors.clientName = "Client Name is required";
-    if (!/^\d{10}$/.test(formData.clientPhone.replace(/\s/g, "")))
-      newErrors.clientPhone = "Must be a 10-digit number";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail.trim()))
-      newErrors.clientEmail = "Enter a valid email address";
-    if (!formData.addressLine1.trim())
-      newErrors.addressLine1 = "Door no, building & street is required";
-    if (!formData.city.trim()) newErrors.city = "City is required";
-    if (!formData.state.trim()) newErrors.state = "State is required";
-    if (!/^\d{6}$/.test(formData.pincode.trim()))
-      newErrors.pincode = "Must be a 6-digit PIN code";
-    if (!formData.projectValue.trim() || numericValue <= 0)
-      newErrors.projectValue = "Enter a valid project value (numbers only, e.g. 7500000)";
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) { setErrors(newErrors); return; }
+  const onSubmit = async (data) => {
+    const parsedNumericValue = parseFloat((data.projectValue || "").replace(/[^\d.]/g, "")) || 0;
     setIsSubmitting(true);
     try {
-      await onConvert?.(formData, numericValue);
+      await onConvert?.(data, parsedNumericValue);
       onClose?.();
       navigate("/clients");
     } finally {
@@ -145,16 +169,16 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
-      <form id="convert-client-form" onSubmit={handleSubmit} noValidate>
+      <form id="convert-client-form" onSubmit={handleSubmit(onSubmit)} noValidate>
 
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
           <div className="grid grid-cols-2 gap-4">
-            <InputField name="clientName" label="Client Name" type="text" value={formData.clientName} onChange={handleChange} error={errors.clientName} placeholder="Full name" />
-            <InputField name="clientPhone" label="Phone Number" type="tel" value={formData.clientPhone} onChange={handleChange} error={errors.clientPhone} placeholder="10-digit number" />
+            <InputField name="clientName" label="Client Name" type="text" register={register("clientName")} error={errors.clientName?.message} placeholder="Full name" />
+            <InputField name="clientPhone" label="Phone Number" type="tel" register={register("clientPhone")} error={errors.clientPhone?.message} placeholder="10-digit number" />
           </div>
           <div className="mt-4">
-            <InputField name="clientEmail" label="Email Address" type="email" value={formData.clientEmail} onChange={handleChange} error={errors.clientEmail} placeholder="example@domain.com" />
+            <InputField name="clientEmail" label="Email Address" type="email" register={register("clientEmail")} error={errors.clientEmail?.message} placeholder="example@domain.com" />
           </div>
         </div>
 
@@ -164,7 +188,7 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
           <SectionHeader>Property Type</SectionHeader>
           <div className="rounded-xl border border-border bg-bg-soft px-4 py-3 flex items-center justify-between">
             <p className="text-[14px] font-semibold text-text">
-              {formData.location || "—"}
+              {formLocation || "—"}
             </p>
             <span className="text-[10px] font-bold uppercase tracking-wider text-text-subtle">
               Mapped from lead
@@ -184,17 +208,15 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
               name="addressLine1"
               label="Address Line 1 (Door no, Building, Street)"
               type="text"
-              value={formData.addressLine1}
-              onChange={handleChange}
-              error={errors.addressLine1}
+              register={register("addressLine1")}
+              error={errors.addressLine1?.message}
               placeholder="e.g. Flat 3B, Marina Heights, 14th Cross Road"
             />
             <InputField
               name="addressLine2"
               label="Address Line 2 (Area, Landmark) — optional"
               type="text"
-              value={formData.addressLine2}
-              onChange={handleChange}
+              register={register("addressLine2")}
               placeholder="e.g. Indiranagar, near Metro Station"
             />
           </div>
@@ -203,27 +225,24 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
               name="city"
               label="City"
               type="text"
-              value={formData.city}
-              onChange={handleChange}
-              error={errors.city}
+              register={register("city")}
+              error={errors.city?.message}
               placeholder="e.g. Chennai"
             />
             <InputField
               name="state"
               label="State"
               type="text"
-              value={formData.state}
-              onChange={handleChange}
-              error={errors.state}
+              register={register("state")}
+              error={errors.state?.message}
               placeholder="e.g. Tamil Nadu"
             />
             <InputField
               name="pincode"
               label="PIN Code"
               type="text"
-              value={formData.pincode}
-              onChange={handleChange}
-              error={errors.pincode}
+              register={register("pincode")}
+              error={errors.pincode?.message}
               placeholder="6-digit PIN"
             />
           </div>
@@ -237,9 +256,8 @@ function ConvertToClientForm({ lead, onClose, onConvert }) {
             name="projectValue"
             label="Confirmed Project Value (₹ in numbers)"
             type="text"
-            value={formData.projectValue}
-            onChange={handleChange}
-            error={errors.projectValue}
+            register={register("projectValue")}
+            error={errors.projectValue?.message}
             placeholder="e.g. 7500000"
           />
           {lead.investment && (

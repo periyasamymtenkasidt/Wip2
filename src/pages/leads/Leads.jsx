@@ -137,7 +137,7 @@ const Leads = () => {
 
   // When a new lead is added, POST to API then re-fetch the current tab
   // AFTER
-  const handleAddLead = async (formData) => {
+  const    handleAddLead = async (formData) => {
     const nextNum =
       TableData.length +
       JSON.parse(localStorage.getItem("newLeadsData") || "[]").length +
@@ -256,7 +256,7 @@ const Leads = () => {
           isInquiries && (
             <button
               onClick={() => setShowForm(true)}
-              className="flex items-center gap-2 bg-linear-to-r from-[#1E3A8A] to-[#001552] text-white rounded-lg px-10 py-2.5 text-sm font-medium"
+              className="flex items-center gap-2 bg-linear-to-r from-select-blue to-dark-blue text-white rounded-lg px-8 py-2.5 text-sm font-medium"
             >
               <FiPlusCircle />
               Add Inquiry

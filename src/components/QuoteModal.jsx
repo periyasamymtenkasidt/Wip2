@@ -1,7 +1,22 @@
 import { useMemo, useState } from "react";
 import { Loader2, Plus, Trash2, Printer, Send, Save } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import Modal from "./Modal";
 import InputField from "./InputField";
+
+const quoteRecipientSchema = yup.object().shape({
+  recipientName: yup.string().required("Recipient name required"),
+  recipientEmail: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+});
 import QuotePreview from "./QuotePreview";
 import {
   getPreset,
@@ -139,7 +154,21 @@ const QuoteModal = ({
       presetData,
     }),
   );
-  const [errors, setErrors] = useState({});
+
+  // react-hook-form for recipient validation
+  const {
+    register,
+    handleSubmit: rhfHandleSubmit,
+    formState: { errors },
+    setValue: rhfSetValue,
+  } = useForm({
+    resolver: yupResolver(quoteRecipientSchema),
+    defaultValues: {
+      recipientName: formData.recipientName,
+      recipientEmail: formData.recipientEmail,
+    },
+  });
+
   const [isSending, setIsSending] = useState(false);
   // Controls the shared Item Form modal opened by "Add Row" / "Add Scope".
   const [scopeFormOpen, setScopeFormOpen] = useState(false);
@@ -169,7 +198,10 @@ const QuoteModal = ({
 
   const updateField = (name, value) => {
     setFormData((p) => ({ ...p, [name]: value }));
-    if (errors[name]) setErrors((p) => ({ ...p, [name]: "" }));
+    // Sync with react-hook-form for validated fields
+    if (name === "recipientName" || name === "recipientEmail") {
+      rhfSetValue(name, value, { shouldValidate: true });
+    }
   };
 
   const updateScope = (idx, key, value) => {
@@ -194,7 +226,6 @@ const QuoteModal = ({
       ...p,
       scopeItems: [...p.scopeItems, newRow],
     }));
-    if (errors.scopeItems) setErrors((e) => ({ ...e, scopeItems: "" }));
     setScopeFormOpen(false);
   };
 
@@ -282,23 +313,15 @@ const QuoteModal = ({
     window.print();
   };
 
-  const validateForSend = () => {
-    const errs = {};
-    if (!formData.recipientName?.trim())
-      errs.recipientName = "Recipient name required";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.recipientEmail || ""))
-      errs.recipientEmail = "Valid email required to send";
-    if (!formData.scopeItems?.length)
-      errs.scopeItems = "Add at least one scope item";
-    return errs;
-  };
-
-  const handleSend = async () => {
-    const errs = validateForSend();
-    if (Object.keys(errs).length > 0) {
-      setErrors(errs);
+  const handleSend = async (validatedData) => {
+    // Also check scope items (not managed by react-hook-form)
+    if (!formData.scopeItems?.length) {
       return;
     }
+    // Sync validated recipient data back to formData
+    formData.recipientName = validatedData.recipientName;
+    formData.recipientEmail = validatedData.recipientEmail;
+
     setIsSending(true);
     await new Promise((r) => setTimeout(r, 600));
     const sentAt = new Date().toISOString();
@@ -359,7 +382,7 @@ const QuoteModal = ({
         </button>
         <button
           type="button"
-          onClick={handleSend}
+          onClick={rhfHandleSubmit(handleSend)}
           disabled={isSending}
           className="min-w-[180px] flex items-center justify-center gap-2 px-7 py-2.5 rounded-lg bg-select-blue text-white text-sm font-medium hover:bg-primary shadow-sm transition-all disabled:opacity-70 disabled:cursor-not-allowed"
         >
@@ -453,9 +476,9 @@ const QuoteModal = ({
                 name="recipientEmail"
                 label="Email"
                 type="email"
-                value={formData.recipientEmail}
+                register={register("recipientEmail")}
                 onChange={(e) => updateField("recipientEmail", e.target.value)}
-                error={errors.recipientEmail}
+                error={errors.recipientEmail?.message}
                 placeholder="example@domain.com"
               />
               <p className="mt-2 text-[10px] text-text-muted">
@@ -471,11 +494,9 @@ const QuoteModal = ({
                     name="recipientName"
                     label="Name"
                     type="text"
-                    value={formData.recipientName}
-                    onChange={(e) =>
-                      updateField("recipientName", e.target.value)
-                    }
-                    error={errors.recipientName}
+                    register={register("recipientName")}
+                    onChange={(e) => updateField("recipientName", e.target.value)}
+                    error={errors.recipientName?.message}
                     placeholder="Full name"
                   />
                   <InputField
@@ -494,11 +515,11 @@ const QuoteModal = ({
                     name="recipientEmail"
                     label="Email"
                     type="email"
-                    value={formData.recipientEmail}
+                    register={register("recipientEmail")}
                     onChange={(e) =>
                       updateField("recipientEmail", e.target.value)
                     }
-                    error={errors.recipientEmail}
+                    error={errors.recipientEmail?.message}
                     placeholder="example@domain.com"
                   />
                 </div>
@@ -558,7 +579,7 @@ const QuoteModal = ({
               </button>
             </div>
             {errors.scopeItems && (
-              <p className="text-red-500 text-[10px] mb-2">{errors.scopeItems}</p>
+              <p className="text-red-500 text-[10px] mb-2">{errors.scopeItems.message}</p>
             )}
             <div className="space-y-3">
               {formData.scopeItems.map((item, idx) => (
@@ -574,7 +595,7 @@ const QuoteModal = ({
                         updateScope(idx, "area", e.target.value)
                       }
                       placeholder="Area"
-                      className="bg-white border border-[#e2e8f0] text-[11px] text-[#1e293b] rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                      className="bg-white border border-bordergray text-[11px] text-darkgray rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
                     />
                     <input
                       type="text"
@@ -583,7 +604,7 @@ const QuoteModal = ({
                         updateScope(idx, "description", e.target.value)
                       }
                       placeholder="Description"
-                      className="bg-white border border-[#e2e8f0] text-[11px] text-[#1e293b] rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                      className="bg-white border border-bordergray text-[11px] text-darkgray rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
                     />
                     <input
                       type="number"
@@ -592,7 +613,7 @@ const QuoteModal = ({
                         updateScope(idx, "amount", e.target.value)
                       }
                       placeholder="₹"
-                      className="bg-white border border-[#e2e8f0] text-[11px] text-[#1e293b] rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300 text-right"
+                      className="bg-white border border-bordergray text-[11px] text-darkgray rounded-md px-2 py-2 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300 text-right"
                     />
                     <button
                       type="button"
@@ -618,7 +639,7 @@ const QuoteModal = ({
                             updateMaterial(idx, mIdx, "name", e.target.value)
                           }
                           placeholder="Plywood"
-                          className="bg-white border border-[#e2e8f0] text-[10px] text-[#1e293b] rounded-md px-2 py-1.5 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                          className="bg-white border border-bordergray text-[10px] text-darkgray rounded-md px-2 py-1.5 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
                         />
                         <input
                           type="text"
@@ -627,7 +648,7 @@ const QuoteModal = ({
                             updateMaterial(idx, mIdx, "spec", e.target.value)
                           }
                           placeholder="BWP 19mm"
-                          className="bg-white border border-[#e2e8f0] text-[10px] text-[#1e293b] rounded-md px-2 py-1.5 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
+                          className="bg-white border border-bordergray text-[10px] text-darkgray rounded-md px-2 py-1.5 w-full focus:outline-none focus:border-gray-300 focus:ring-1 focus:ring-gray-300"
                         />
                         <button
                           type="button"

@@ -34,11 +34,11 @@ const QuotePreview = ({ quote }) => {
             }}
           />
           <div className="flex items-center gap-2.5 mt-4">
-            <div className="w-5 h-px bg-[#c5a367]" />
-            <p className="text-[9px] uppercase tracking-[0.5em] text-[#8b6914] font-semibold leading-none">
+            <div className="w-5 h-px bg-paleorange" />
+            <p className="text-[9px] uppercase tracking-[0.5em] text-dark-yellow font-semibold leading-none">
               Architecture · Interiors
             </p>
-            <div className="w-5 h-px bg-[#c5a367]" />
+            <div className="w-5 h-px bg-paleorange" />
           </div>
           <p className="text-[8px] uppercase tracking-[0.4em] text-gray-400 mt-2 leading-none ml-1">
             Chennai · Est. 2018
@@ -50,7 +50,7 @@ const QuotePreview = ({ quote }) => {
           <h1 className="text-[22px] font-light tracking-[0.22em] uppercase text-black leading-none">
             Estimate
           </h1>
-          <p className="text-[15px] font-bold tracking-[0.18em] text-black mt-4 pb-1.5 border-b border-[#c5a367] inline-block">
+          <p className="text-[15px] font-bold tracking-[0.18em] text-black mt-4 pb-1.5 border-b border-paleorange inline-block">
             {quote.quoteId}
           </p>
         </div>
@@ -140,7 +140,7 @@ const QuotePreview = ({ quote }) => {
                   <td className="py-4 px-2 text-[11px] leading-snug">
                     <p className="text-gray-700">{item.description || "—"}</p>
                     {item.materials?.length > 0 && (
-                      <ul className="mt-2 space-y-1 pl-2 border-l border-[#c5a367]/40">
+                      <ul className="mt-2 space-y-1 pl-2 border-l border-paleorange/40">
                         {item.materials.map((m, mIdx) => (
                           <li
                             key={mIdx}

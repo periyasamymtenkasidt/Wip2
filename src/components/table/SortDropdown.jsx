@@ -22,7 +22,7 @@ export default function SortDropdown({ fields, value, onChange, isOpen, onToggle
         className={`p-2 rounded-md shadow-sm border transition-colors ${
           isOpen || value.key
             ? "border-select-blue bg-blue-50 text-select-blue"
-            : "border-[#dfdfdf] bg-white text-[#7b7b7b] hover:bg-gray-50"
+            : "border-grayborder bg-white text-gray-text hover:bg-gray-50"
         }`}
       >
         <ArrowUpDown size={17} />

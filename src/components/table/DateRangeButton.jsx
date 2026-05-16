@@ -19,7 +19,7 @@ export default function DateRangeButton({
         className={`p-2 rounded-md shadow-sm border transition-colors ${
           isOpen || hasRange
             ? "border-select-blue bg-blue-50 text-select-blue"
-            : "border-[#dfdfdf] bg-white text-[#7b7b7b] hover:bg-gray-50"
+            : "border-grayborder bg-white text-gray-text hover:bg-gray-50"
         }`}
       >
         <CalendarRange size={17} />

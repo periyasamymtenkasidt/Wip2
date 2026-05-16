@@ -1,8 +1,31 @@
 import { useEffect, useMemo, useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
+
+const editInquirySchema = yup.object().shape({
+  fullName: yup.string().required("Full Name is required"),
+  phoneNumber: yup
+    .string()
+    .required("Phone Number is required")
+    .transform((v) => v?.replace(/\s/g, ""))
+    .matches(/^\d{10}$/, "Must be a 10-digit number"),
+  email: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+  quotePreset: yup.string().required("Property Preset is required"),
+  propertyType: yup.string().required("Property Type is required"),
+  location: yup.string().required("Location is required"),
+});
 import {
   getPreset,
   getPresetKeys,
@@ -50,34 +73,19 @@ const inquirySources = [
 ];
 
 const CLIENT_INFO_FIELDS = [
-  { name: "fullName", label: "Full Name", type: "text", placeholder: "Enter full name", required: true },
+  { name: "fullName", label: "Full Name", type: "text", placeholder: "Enter full name" },
   {
     name: "phoneNumber", label: "Phone Number", type: "tel", placeholder: "10-digit number",
-    required: true,
-    validation: (val) => !/^\d{10}$/.test(val.replace(/\s/g, "")) ? "Must be a 10-digit number" : null,
   },
   {
     name: "email", label: "Email Address", type: "email", placeholder: "example@domain.com",
-    required: true,
-    validation: (val) => !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) ? "Enter a valid email address" : null,
   },
   { name: "inquirySource", label: "Inquiry Source", type: "select", options: inquirySources },
 ];
 
 const PROJECT_DETAIL_FIELDS = [
   { name: "processionDate", label: "Possession Date", type: "date" },
-  { name: "location", label: "City / Location", type: "text", placeholder: "e.g. Chennai, Tamil Nadu", icon: GrLocation, required: true },
-];
-
-// Status transitions live on the lead detail page (Mark Qualified, Send
-// Proposal, Mark Won, etc.) — not on this edit form. We still carry
-// `inquiryStatus` in formData so submit preserves the lead's existing
-// status, but we don't validate or render a picker for it.
-const REQUIRED_FIELDS = [
-  ...CLIENT_INFO_FIELDS.filter((f) => f.required),
-  { name: "location", label: "Location", required: true },
-  { name: "quotePreset", label: "Property Preset", required: true },
-  { name: "propertyType", label: "Property Type", required: true },
+  { name: "location", label: "City / Location", type: "text", placeholder: "e.g. Chennai, Tamil Nadu", icon: GrLocation },
 ];
 
 const SectionHeader = ({ children, hint }) => (
@@ -96,9 +104,23 @@ const formatLakhs = (rupees) => `₹${(rupees / 100000).toFixed(1)}L`;
 
 function EditInquiryform({ initialData, onClose, onAddLead }) {
   const presetKeys = useMemo(() => getPresetKeys(), []);
-  const [formData, setFormData] = useState(INITIAL_FORM_STATE);
-  const [errors, setErrors] = useState({});
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(editInquirySchema),
+    defaultValues: INITIAL_FORM_STATE,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const quotePreset = watch("quotePreset");
+  const propertyType = watch("propertyType");
+  const investmentRange = watch("investmentRange");
 
   useEffect(() => {
     if (!initialData) return;
@@ -123,12 +145,12 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
     // the preset was edited later), fall back to the preset's default so
     // the dropdown shows a valid selection.
     const allowed = getPreset(presetKey)?.propertyTypes || [];
-    const propertyType =
+    const resolvedPropertyType =
       initialData.propertyType && allowed.includes(initialData.propertyType)
         ? initialData.propertyType
         : presetDefaults.propertyType;
 
-    setFormData({
+    reset({
       fullName: initialData.clientName || "",
       phoneNumber: initialData.phone || "",
       email: initialData.email || "",
@@ -142,13 +164,13 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
       // existing lead values win over preset defaults, so manual edits stick
       quoteSizeRange:
         initialData.quoteSizeRange ?? presetDefaults.quoteSizeRange,
-      propertyType,
+      propertyType: resolvedPropertyType,
     });
-  }, [initialData, presetKeys]);
+  }, [initialData, presetKeys, reset]);
 
   const activePreset = useMemo(
-    () => getPreset(formData.quotePreset),
-    [formData.quotePreset],
+    () => getPreset(quotePreset),
+    [quotePreset],
   );
 
   const presetTotals = useMemo(
@@ -159,8 +181,8 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
   // Property-type multiplier scales the preset's baseline (penthouse may
   // be 1.2×, studio 0.85×, etc.). Falls back to 1.0 when not configured.
   const typeMultiplier = useMemo(
-    () => getMultiplierFor(activePreset, formData.propertyType),
-    [activePreset, formData.propertyType],
+    () => getMultiplierFor(activePreset, propertyType),
+    [activePreset, propertyType],
   );
 
   const effectiveBaseline = (presetTotals?.grandTotal || 0) * typeMultiplier;
@@ -171,54 +193,30 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
   const investmentBands = useMemo(() => {
     const bands = generateInvestmentBands(effectiveBaseline);
     if (
-      formData.investmentRange &&
-      !bands.includes(formData.investmentRange)
+      investmentRange &&
+      !bands.includes(investmentRange)
     ) {
-      return [formData.investmentRange, ...bands];
+      return [investmentRange, ...bands];
     }
     return bands;
-  }, [effectiveBaseline, formData.investmentRange]);
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  }, [effectiveBaseline, investmentRange]);
 
   const handlePresetChange = (e) => {
     const key = e.target.value;
-    setFormData((prev) => ({ ...prev, ...buildPresetState(key) }));
-    setErrors((prev) => ({ ...prev, propertyType: "", quoteSizeRange: "" }));
+    const presetState = buildPresetState(key);
+    setValue("quotePreset", presetState.quotePreset, { shouldValidate: true });
+    setValue("quoteSizeRange", presetState.quoteSizeRange);
+    setValue("propertyType", presetState.propertyType, { shouldValidate: true });
   };
 
-  const validate = () => {
-    const newErrors = {};
-    REQUIRED_FIELDS.forEach((f) => {
-      const val = formData[f.name];
-      if (f.required && (!val || !val.toString().trim())) {
-        newErrors[f.name] = `${f.label} is required`;
-      } else if (f.validation) {
-        const msg = f.validation(val);
-        if (msg) newErrors[f.name] = msg;
-      }
-    });
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
       // Older consumers (LeadEdit.jsx, table column "scope") still read
       // `projectScope` — derive it from the property type.
       await onAddLead?.({
-        ...formData,
-        projectScope: formData.propertyType,
+        ...data,
+        projectScope: data.propertyType,
       });
       onClose?.();
     } finally {
@@ -232,9 +230,8 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
       name={cfg.name}
       label={cfg.label}
       type={cfg.type}
-      value={formData[cfg.name]}
-      onChange={handleChange}
-      error={errors[cfg.name]}
+      register={register(cfg.name)}
+      error={errors[cfg.name]?.message}
       placeholder={cfg.placeholder}
       options={cfg.options}
       icon={cfg.icon}
@@ -274,7 +271,7 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
-      <form id="edit-inquiry-form" onSubmit={handleSubmit} noValidate>
+      <form id="edit-inquiry-form" onSubmit={handleSubmit(onSubmit)} noValidate>
         {/* ── Client Information ─────────────────────────────────────── */}
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
@@ -298,19 +295,18 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
               name="quotePreset"
               label="Property Preset"
               type="select"
-              value={formData.quotePreset}
+              register={register("quotePreset")}
               onChange={handlePresetChange}
               options={presetKeys}
-              error={errors.quotePreset}
+              error={errors.quotePreset?.message}
             />
             <InputField
               name="propertyType"
               label="Property Type"
               type="select"
-              value={formData.propertyType}
-              onChange={handleChange}
+              register={register("propertyType")}
               options={activePreset?.propertyTypes || []}
-              error={errors.propertyType}
+              error={errors.propertyType?.message}
             />
           </div>
 
@@ -336,7 +332,7 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
                     <span className="text-text-subtle">incl. GST</span>
                     {typeMultiplier !== 1 && (
                       <span className="text-[10px] font-bold text-select-blue bg-active-bg px-1.5 py-0.5 rounded-md ml-0.5">
-                        ×{typeMultiplier.toFixed(2)} {formData.propertyType}
+                        ×{typeMultiplier.toFixed(2)} {propertyType}
                       </span>
                     )}
                   </span>
@@ -367,15 +363,14 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
               name="investmentRange"
               label="Investment Range"
               type="select"
-              value={formData.investmentRange}
-              onChange={handleChange}
+              register={register("investmentRange")}
               options={investmentBands}
               placeholder={
                 investmentBands.length
                   ? "Choose a range"
                   : "Pick a preset first"
               }
-              error={errors.investmentRange}
+              error={errors.investmentRange?.message}
             />
             {PROJECT_DETAIL_FIELDS.slice(0, 1).map(field)}
           </div>
@@ -396,9 +391,8 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
             type="textarea"
             name="architecturalNotes"
             label="Architectural Notes"
-            value={formData.architecturalNotes}
-            onChange={handleChange}
-            error={errors.architecturalNotes}
+            register={register("architecturalNotes")}
+            error={errors.architecturalNotes?.message}
             placeholder="Mention design preferences, mood, or constraints…"
             rows={4}
           />

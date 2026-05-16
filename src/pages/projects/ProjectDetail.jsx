@@ -112,15 +112,47 @@ const activityIcon = (entry) => {
   // status
   const to = entry.to?.toLowerCase();
   const map = {
-    qualified: { icon: <FiCheck size={12} />, bg: "bg-green-50", iconColor: "text-green-600" },
-    proposal: { icon: <FiFileText size={12} />, bg: "bg-blue-50", iconColor: "text-blue-600" },
-    negotiation: { icon: <FiTrendingUp size={12} />, bg: "bg-amber-50", iconColor: "text-amber-600" },
-    won: { icon: <FiAward size={12} />, bg: "bg-emerald-50", iconColor: "text-emerald-600" },
-    converted: { icon: <FiUserCheck size={12} />, bg: "bg-teal-50", iconColor: "text-teal-600" },
-    "on hold": { icon: <FiPause size={12} />, bg: "bg-gray-100", iconColor: "text-gray-500" },
-    lost: { icon: <FiXCircle size={12} />, bg: "bg-red-50", iconColor: "text-red-600" },
+    qualified: {
+      icon: <FiCheck size={12} />,
+      bg: "bg-green-50",
+      iconColor: "text-green-600",
+    },
+    proposal: {
+      icon: <FiFileText size={12} />,
+      bg: "bg-blue-50",
+      iconColor: "text-blue-600",
+    },
+    negotiation: {
+      icon: <FiTrendingUp size={12} />,
+      bg: "bg-amber-50",
+      iconColor: "text-amber-600",
+    },
+    won: {
+      icon: <FiAward size={12} />,
+      bg: "bg-emerald-50",
+      iconColor: "text-emerald-600",
+    },
+    converted: {
+      icon: <FiUserCheck size={12} />,
+      bg: "bg-teal-50",
+      iconColor: "text-teal-600",
+    },
+    "on hold": {
+      icon: <FiPause size={12} />,
+      bg: "bg-gray-100",
+      iconColor: "text-gray-500",
+    },
+    lost: {
+      icon: <FiXCircle size={12} />,
+      bg: "bg-red-50",
+      iconColor: "text-red-600",
+    },
   };
-  const styling = map[to] || { icon: <FiCheck size={12} />, bg: "bg-gray-100", iconColor: "text-gray-500" };
+  const styling = map[to] || {
+    icon: <FiCheck size={12} />,
+    bg: "bg-gray-100",
+    iconColor: "text-gray-500",
+  };
   const body =
     entry.to === "Lost" && entry.lostReason
       ? `Reason: ${entry.lostReason}${entry.lostNote ? ` — ${entry.lostNote}` : ""}`
@@ -203,7 +235,14 @@ const phaseFromStatus = (status) => {
 const groupActivityByPhase = (activity) => {
   const oldestFirst = [...activity].reverse();
   let phase = "proposal";
-  const out = { proposal: [], negotiation: [], onhold: [], won: [], delivery: [], lost: [] };
+  const out = {
+    proposal: [],
+    negotiation: [],
+    onhold: [],
+    won: [],
+    delivery: [],
+    lost: [],
+  };
   oldestFirst.forEach((entry) => {
     if (entry.type === "status") {
       // A "Won" transition that also created a client (clientID set) moves
@@ -229,11 +268,11 @@ const TimelineEntry = ({ entry }) => {
     const count = entry.attachments?.length || 0;
     return (
       <div className="relative">
-        <div className="absolute -left-[35px] top-0 w-8 h-8 rounded-full bg-[#f0f9ff] border-4 border-white flex items-center justify-center text-blue-500 z-10 shadow-sm">
+        <div className="absolute -left-[35px] top-0 w-8 h-8 rounded-full bg-active-bg border-4 border-white flex items-center justify-center text-blue-500 z-10 shadow-sm">
           <FiSend size={12} />
         </div>
         <div className="flex justify-between items-start mb-1.5">
-          <h4 className="font-bold text-[#1e293b] text-[14px]">
+          <h4 className="font-bold text-darkgray text-[14px]">
             Proposal emailed to {entry.to}
           </h4>
           <span className="text-[11px] font-medium text-gray-400 tracking-wide">
@@ -252,11 +291,13 @@ const TimelineEntry = ({ entry }) => {
   const meta = activityIcon(entry);
   return (
     <div className="relative">
-      <div className={`absolute -left-[35px] top-0 w-8 h-8 rounded-full ${meta.bg} border-4 border-white flex items-center justify-center ${meta.iconColor} z-10 shadow-sm`}>
+      <div
+        className={`absolute -left-[35px] top-0 w-8 h-8 rounded-full ${meta.bg} border-4 border-white flex items-center justify-center ${meta.iconColor} z-10 shadow-sm`}
+      >
         {meta.icon}
       </div>
       <div className="flex justify-between items-start mb-1.5">
-        <h4 className="font-bold text-[#1e293b] text-[14px]">{meta.title}</h4>
+        <h4 className="font-bold text-darkgray text-[14px]">{meta.title}</h4>
         <span className="text-[11px] font-medium text-gray-400 tracking-wide">
           {formatActivityTime(entry.at)}
         </span>
@@ -274,8 +315,13 @@ const StepperRow = ({ steps, currentIdx, dimmed }) => (
   <div className={`relative ${dimmed ? "opacity-40" : ""}`}>
     <div className="absolute top-1/2 left-0 w-full h-[2px] bg-gray-200 -translate-y-1/2 rounded-full"></div>
     <div
-      className="absolute top-1/2 left-0 h-[3px] bg-[#001552] -translate-y-1/2 rounded-full transition-all duration-500"
-      style={{ width: currentIdx >= 0 ? `${(currentIdx / (steps.length - 1)) * 100}%` : "0%" }}
+      className="absolute top-1/2 left-0 h-[3px] bg-select-blue -translate-y-1/2 rounded-full transition-all duration-500"
+      style={{
+        width:
+          currentIdx >= 0
+            ? `${(currentIdx / (steps.length - 1)) * 100}%`
+            : "0%",
+      }}
     ></div>
     <div className="relative flex justify-between">
       {steps.map((step, idx) => {
@@ -284,12 +330,16 @@ const StepperRow = ({ steps, currentIdx, dimmed }) => (
           <div key={step} className="flex flex-col items-center">
             <div
               className={`w-6 h-6 rounded-full flex items-center justify-center z-10 border-[3px] border-white ring-2 ring-white shadow-sm transition-colors ${
-                isCompleted ? "bg-[#001552] text-white" : "bg-gray-200 text-transparent"
+                isCompleted
+                  ? "bg-select-blue text-white"
+                  : "bg-gray-200 text-transparent"
               }`}
             >
               {isCompleted && <FiCheck size={12} strokeWidth={4} />}
             </div>
-            <span className={`absolute top-8 text-[11px] font-bold ${isCompleted ? "text-[#001552]" : "text-gray-400"}`}>
+            <span
+              className={`absolute top-8 text-[11px] font-bold ${isCompleted ? "text-select-blue" : "text-gray-400"}`}
+            >
               {step}
             </span>
           </div>
@@ -310,7 +360,7 @@ const EmailEntry = ({ entry }) => {
         <Field label="Sent">{formatActivityTime(entry.at)}</Field>
         <div className="col-span-2">
           <Field label="Subject">
-            <span className="font-bold text-[#1e293b]">
+            <span className="font-bold text-darkgray">
               {entry.subject || "—"}
             </span>
           </Field>
@@ -340,7 +390,7 @@ const EmailEntry = ({ entry }) => {
                     <FiFileText size={16} />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[12px] font-semibold text-[#1e293b] truncate">
+                    <p className="text-[12px] font-semibold text-darkgray truncate">
                       {att.name}
                     </p>
                     <p className="text-[10px] text-text-subtle">
@@ -388,7 +438,9 @@ const ProjectDetail = () => {
     const currentPhase = phaseFromStatus(lead.status);
     if (grouped[currentPhase]?.length > 0) return currentPhase;
     // Otherwise pick the latest non-empty phase (in pipeline order).
-    const lastNonEmpty = [...PHASES].reverse().find((p) => grouped[p.key]?.length > 0);
+    const lastNonEmpty = [...PHASES]
+      .reverse()
+      .find((p) => grouped[p.key]?.length > 0);
     return lastNonEmpty?.key || "all";
   }, [lead, grouped]);
 
@@ -404,7 +456,9 @@ const ProjectDetail = () => {
           <FiArrowLeft size={14} /> Back to Projects
         </button>
         <div className="bg-white rounded-[20px] p-12 text-center shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
-          <p className="text-[14px] font-semibold text-[#1e293b]">No project found for {id}</p>
+          <p className="text-[14px] font-semibold text-darkgray">
+            No project found for {id}
+          </p>
         </div>
       </div>
     );
@@ -446,12 +500,14 @@ const ProjectDetail = () => {
         <div className="flex items-center gap-3">
           <button
             onClick={() => navigate("/projects")}
-            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-border hover:bg-gray-50 hover:border-[#1E3A8A]/30 text-gray-500 hover:text-[#1E3A8A] transition-all shadow-sm cursor-pointer"
+            className="w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-border hover:bg-gray-50 hover:border-select-blue/30 text-gray-500 hover:text-select-blue transition-all shadow-sm cursor-pointer"
           >
             <FiArrowLeft size={18} />
           </button>
           <div>
-            <h1 className="text-[26px] font-bold text-[#1e293b] leading-tight">Project</h1>
+            <h1 className="text-[26px] font-bold text-darkgray leading-tight">
+              Project
+            </h1>
             <p className="text-[13px] text-gray-500 mt-1">
               Read-only view • Proposal ID #{lead.proposalId}
             </p>
@@ -460,7 +516,7 @@ const ProjectDetail = () => {
         <div className="flex gap-3 flex-wrap justify-end">
           <Link
             to={`/leads/${lead.proposalId}`}
-            className="flex items-center gap-2 px-5 py-2.5 bg-[#001552] text-white rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 bg-select-blue text-white rounded-xl text-sm font-semibold hover:bg-blue-950 shadow-sm"
           >
             <FiExternalLink size={16} /> Open Lead to Edit
           </Link>
@@ -482,14 +538,16 @@ const ProjectDetail = () => {
             <div className="flex justify-between items-start">
               <div>
                 <div className="flex items-center gap-3 mb-3">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${getBadgeClass(lead.status)}`}>
+                  <span
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide ${getBadgeClass(lead.status)}`}
+                  >
                     {lead.status}
                   </span>
                   <span className="text-[13px] text-gray-500 font-medium tracking-wide">
                     Project ID: #{lead.proposalId}
                   </span>
                 </div>
-                <h2 className="text-[28px] font-bold text-[#001552] mb-3 tracking-tight">
+                <h2 className="text-[28px] font-bold text-select-blue mb-3 tracking-tight">
                   {lead.clientName}
                 </h2>
                 <p className="text-[15px] text-gray-500 flex items-center gap-2">
@@ -503,14 +561,22 @@ const ProjectDetail = () => {
               <p className="text-[10px] text-text-subtle font-bold uppercase tracking-wider mb-4">
                 Sales
               </p>
-              <StepperRow steps={SALES_STEPS} currentIdx={adjustedSalesIdx} dimmed={isLost} />
+              <StepperRow
+                steps={SALES_STEPS}
+                currentIdx={adjustedSalesIdx}
+                dimmed={isLost}
+              />
             </div>
 
             <div className="mt-14">
               <p className="text-[10px] text-text-subtle font-bold uppercase tracking-wider mb-4">
                 Delivery
               </p>
-              <StepperRow steps={DELIVERY_STEPS} currentIdx={deliveryIdx} dimmed={!deliveryActive || isLost} />
+              <StepperRow
+                steps={DELIVERY_STEPS}
+                currentIdx={deliveryIdx}
+                dimmed={!deliveryActive || isLost}
+              />
             </div>
 
             {status === "negotiation" && lead.negotiationNote && (
@@ -519,8 +585,12 @@ const ProjectDetail = () => {
                   <FiTrendingUp size={18} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-amber-800">Active Blocker</p>
-                  <p className="text-[12px] text-amber-700 mt-0.5">{lead.negotiationNote}</p>
+                  <p className="text-[13px] font-bold text-amber-800">
+                    Active Blocker
+                  </p>
+                  <p className="text-[12px] text-amber-700 mt-0.5">
+                    {lead.negotiationNote}
+                  </p>
                   {lead.expectedClose && (
                     <p className="text-[11px] text-amber-600 mt-1">
                       Expected close: {lead.expectedClose}
@@ -535,7 +605,9 @@ const ProjectDetail = () => {
                   <FiXCircle size={18} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-red-700">Marked as Lost</p>
+                  <p className="text-[13px] font-bold text-red-700">
+                    Marked as Lost
+                  </p>
                   <p className="text-[12px] text-red-600 mt-0.5">
                     Reason: {lead.lostReason || "Not specified"}
                     {lead.lostNote ? ` — ${lead.lostNote}` : ""}
@@ -549,7 +621,9 @@ const ProjectDetail = () => {
                   <FiPause size={18} />
                 </div>
                 <div>
-                  <p className="text-[13px] font-bold text-gray-700">Project on Hold</p>
+                  <p className="text-[13px] font-bold text-gray-700">
+                    Project on Hold
+                  </p>
                 </div>
               </div>
             )}
@@ -562,7 +636,7 @@ const ProjectDetail = () => {
                 <p className="text-[11px] text-gray-400 font-bold uppercase tracking-wider mb-3">
                   Investment Range
                 </p>
-                <h3 className="text-3xl font-bold text-[#001552] leading-tight">
+                <h3 className="text-3xl font-bold text-select-blue leading-tight">
                   {lead.investment?.includes("-") ? (
                     <>
                       {lead.investment.split("-")[0].trim()} - <br />
@@ -575,19 +649,43 @@ const ProjectDetail = () => {
               </div>
               <div className="mt-10 border-t border-gray-100 text-left pt-5 space-y-3.5">
                 <div className="flex justify-between items-center text-[13px]">
-                  <span className="text-gray-500 font-medium">Property Type</span>
-                  <span className="font-bold text-gray-900">{lead.propertyType || "—"}</span>
+                  <span className="text-gray-500 font-medium">
+                    Property Type
+                  </span>
+                  <span className="font-bold text-gray-900">
+                    {lead.propertyType || "—"}
+                  </span>
                 </div>
               </div>
             </div>
 
             <div className="w-full md:w-[65%] grid grid-cols-2 gap-4">
-              <InfoCard icon={<FiHome size={18} />} label="Property Type" value={lead.propertyType} />
-              <InfoCard icon={<FiCalendar size={18} />} label="Possession Date" value={lead.possessionDate} />
-              <InfoCard icon={<FiLayers size={18} />} label="Project Scope" value={lead.scope} />
-              <InfoCard icon={<FiMessageCircle size={18} />} label="Inquiry Source" value={lead.inquirySource} />
+              <InfoCard
+                icon={<FiHome size={18} />}
+                label="Property Type"
+                value={lead.propertyType}
+              />
+              <InfoCard
+                icon={<FiCalendar size={18} />}
+                label="Possession Date"
+                value={lead.possessionDate}
+              />
+              <InfoCard
+                icon={<FiLayers size={18} />}
+                label="Project Scope"
+                value={lead.scope}
+              />
+              <InfoCard
+                icon={<FiMessageCircle size={18} />}
+                label="Inquiry Source"
+                value={lead.inquirySource}
+              />
               <div className="col-span-2">
-                <InfoCard icon={<FiPhone size={18} />} label="Phone Number" value={lead.phone} />
+                <InfoCard
+                  icon={<FiPhone size={18} />}
+                  label="Phone Number"
+                  value={lead.phone}
+                />
               </div>
             </div>
           </div>
@@ -597,12 +695,16 @@ const ProjectDetail = () => {
             <div className="px-6 pt-5">
               <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <div>
-                  <h3 className="flex items-center gap-2 text-[16px] font-bold text-[#1e293b]">
-                    <FiFileText size={18} className="text-gray-500" /> Communication Log
+                  <h3 className="flex items-center gap-2 text-[16px] font-bold text-darkgray">
+                    <FiFileText size={18} className="text-gray-500" />{" "}
+                    Communication Log
                   </h3>
                   <p className="text-[12px] text-text-muted mt-0.5">
-                    Showing the {activeTab === "all" ? "full activity feed" : `${PHASES.find((p) => p.key === activeTab)?.label ?? ""} stage`}.
-                    {activeTab !== "all" && " Switch tabs for other stages."}
+                    Showing the{" "}
+                    {activeTab === "all"
+                      ? "full activity feed"
+                      : `${PHASES.find((p) => p.key === activeTab)?.label ?? ""} stage`}
+                    .{activeTab !== "all" && " Switch tabs for other stages."}
                   </p>
                 </div>
                 <span className="text-[11px] text-text-subtle">
@@ -670,12 +772,20 @@ const ProjectDetail = () => {
           <div className="bg-white rounded-[20px] p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)] flex flex-col items-center text-center">
             <div className="relative mb-5">
               <div className="w-[100px] h-[100px] rounded-full overflow-hidden border-[5px] border-white shadow-[0_4px_15px_-3px_rgba(0,0,0,0.15)]">
-                <img src={avatar} alt="Profile" className="w-full h-full object-cover" />
+                <img
+                  src={avatar}
+                  alt="Profile"
+                  className="w-full h-full object-cover"
+                />
               </div>
-              <div className="absolute bottom-2 right-2 w-4 h-4 bg-[#22c55e] border-[3px] border-white rounded-full"></div>
+              <div className="absolute bottom-2 right-2 w-4 h-4 bg-emarold border-[3px] border-white rounded-full"></div>
             </div>
-            <h3 className="text-[22px] font-bold text-[#001552] mb-1">{lead.clientName}</h3>
-            <p className="text-[13px] font-medium text-gray-500 mb-2">{lead.email || "—"}</p>
+            <h3 className="text-[22px] font-bold text-select-blue mb-1">
+              {lead.clientName}
+            </h3>
+            <p className="text-[13px] font-medium text-gray-500 mb-2">
+              {lead.email || "—"}
+            </p>
             <p className="text-[12px] text-gray-500 flex items-center gap-1.5">
               <FiPhone size={12} /> {lead.phone || "—"}
             </p>
@@ -684,44 +794,58 @@ const ProjectDetail = () => {
           {isConverted && (
             <div className="bg-white rounded-[20px] p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.1)]">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-[15px] font-bold text-[#1e293b]">Delivery Progress</h3>
-                <span className="text-[11px] font-bold text-emerald-600">{collectedPct}%</span>
+                <h3 className="text-[15px] font-bold text-darkgray">
+                  Delivery Progress
+                </h3>
+                <span className="text-[11px] font-bold text-emerald-600">
+                  {collectedPct}%
+                </span>
               </div>
               <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden mb-5">
-                <div className="h-full bg-emerald-500 transition-all duration-500" style={{ width: `${collectedPct}%` }}></div>
+                <div
+                  className="h-full bg-emerald-500 transition-all duration-500"
+                  style={{ width: `${collectedPct}%` }}
+                ></div>
               </div>
               <div className="space-y-2">
-                {(milestones.length > 0 ? milestones : PAYMENT_MILESTONES).map((m) => {
-                  const paid = m.status === "paid";
-                  return (
-                    <div
-                      key={m.id}
-                      className={`p-3 rounded-xl border ${paid ? "bg-emerald-50 border-emerald-100" : "bg-bg-soft border-border"}`}
-                    >
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="text-[12px] font-bold text-[#1e293b]">
-                          {m.id}. {m.name}
+                {(milestones.length > 0 ? milestones : PAYMENT_MILESTONES).map(
+                  (m) => {
+                    const paid = m.status === "paid";
+                    return (
+                      <div
+                        key={m.id}
+                        className={`p-3 rounded-xl border ${paid ? "bg-emerald-50 border-emerald-100" : "bg-bg-soft border-border"}`}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="text-[12px] font-bold text-darkgray">
+                            {m.id}. {m.name}
+                          </p>
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                              paid
+                                ? "bg-emerald-100 text-emerald-700"
+                                : "bg-gray-200 text-gray-600"
+                            }`}
+                          >
+                            {paid ? "Paid" : "Pending"}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-text-muted">
+                          {m.pct}%
+                          {m.total
+                            ? ` • ₹${m.total.toLocaleString("en-IN")}`
+                            : ""}
+                          {paid && m.paidDate ? ` • ${m.paidDate}` : ""}
                         </p>
-                        <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                            paid ? "bg-emerald-100 text-emerald-700" : "bg-gray-200 text-gray-600"
-                          }`}
-                        >
-                          {paid ? "Paid" : "Pending"}
-                        </span>
                       </div>
-                      <p className="text-[11px] text-text-muted">
-                        {m.pct}%{m.total ? ` • ₹${m.total.toLocaleString("en-IN")}` : ""}
-                        {paid && m.paidDate ? ` • ${m.paidDate}` : ""}
-                      </p>
-                    </div>
-                  );
-                })}
+                    );
+                  },
+                )}
               </div>
               {client && (
                 <Link
                   to={`/clients/${client.clientID}`}
-                  className="mt-4 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-[#001552] text-white text-[12px] font-semibold hover:bg-blue-950 transition-all"
+                  className="mt-4 w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-xl bg-dark-blue text-white text-[12px] font-semibold hover:bg-blue-950 transition-all"
                 >
                   Manage in Client page <FiExternalLink size={12} />
                 </Link>
@@ -744,7 +868,11 @@ const ProjectDetail = () => {
               {activity.filter((a) => a.type === "note").length}
             </SummaryRow>
             <SummaryRow label="Stage changes">
-              {activity.filter((a) => a.type === "status" || a.type === "negotiation").length}
+              {
+                activity.filter(
+                  (a) => a.type === "status" || a.type === "negotiation",
+                ).length
+              }
             </SummaryRow>
             <SummaryRow label="Milestone events">
               {activity.filter((a) => a.type === "milestone").length}
@@ -771,7 +899,7 @@ const TabPill = ({ label, icon, count, active, onClick, className }) => (
     onClick={onClick}
     className={`flex items-center gap-2 px-3.5 py-2 rounded-full text-[12px] font-semibold transition-all ${
       active
-        ? `${className} ring-2 ring-offset-1 ring-[#001552]/30 shadow-sm`
+        ? `${className} ring-2 ring-offset-1 ring-dark-blue/30 shadow-sm`
         : `${className} opacity-60 hover:opacity-100`
     }`}
   >
@@ -796,17 +924,21 @@ const PhaseSection = ({ phase, entries }) => {
       <div className={`${phase.softBg} px-8 py-5 border-b border-bg-soft`}>
         <div className="flex items-center justify-between gap-4 flex-wrap">
           <div className="flex items-center gap-3">
-            <div className={`w-9 h-9 rounded-xl ${phase.badge} flex items-center justify-center`}>
+            <div
+              className={`w-9 h-9 rounded-xl ${phase.badge} flex items-center justify-center`}
+            >
               {phase.icon}
             </div>
             <div>
-              <h4 className="text-[15px] font-bold text-[#1e293b]">
+              <h4 className="text-[15px] font-bold text-darkgray">
                 {phase.label}{" "}
                 <span className="text-text-muted font-medium">
                   · {entries.length} entr{entries.length === 1 ? "y" : "ies"}
                 </span>
               </h4>
-              <p className="text-[11px] text-text-muted mt-0.5">{phase.description}</p>
+              <p className="text-[11px] text-text-muted mt-0.5">
+                {phase.description}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-text-subtle">
@@ -866,14 +998,16 @@ const AllActivityFeed = ({ activity }) => (
 
 const InfoCard = ({ icon, label, value }) => (
   <div className="bg-white rounded-[20px] p-5 border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.03)] flex items-center gap-4">
-    <div className="w-10 h-10 bg-[#f8fafc] rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
+    <div className="w-10 h-10 bg-palewhite rounded-xl text-gray-500 flex items-center justify-center border border-gray-100">
       {icon}
     </div>
     <div className="min-w-0">
       <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">
         {label}
       </p>
-      <p className="text-[14px] font-bold text-gray-800 truncate">{value || "—"}</p>
+      <p className="text-[14px] font-bold text-gray-800 truncate">
+        {value || "—"}
+      </p>
     </div>
   </div>
 );
@@ -881,7 +1015,7 @@ const InfoCard = ({ icon, label, value }) => (
 const SummaryRow = ({ label, children }) => (
   <div className="flex items-center justify-between gap-3 py-1.5 border-b border-bg-soft last:border-0">
     <span className="text-[12px] text-text-muted">{label}</span>
-    <span className="text-[12px] font-semibold text-[#1e293b]">{children}</span>
+    <span className="text-[12px] font-semibold text-darkgray">{children}</span>
   </div>
 );
 

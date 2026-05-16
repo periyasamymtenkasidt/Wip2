@@ -13,7 +13,7 @@ export async function downloadQuoteAsImage(quote, fileName) {
   container.style.top = "0";
   container.style.width = "800px";
   container.style.padding = "32px";
-  container.style.background = "#ffffff";
+  container.style.background = "var(--color-surface)";
   document.body.appendChild(container);
 
   const root = createRoot(container);

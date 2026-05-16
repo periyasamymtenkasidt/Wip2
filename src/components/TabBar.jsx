@@ -22,22 +22,22 @@ const TabBar = ({ tabs = [], active = 0, onChange, variant = "folder" }) => {
               <div
                 className={`relative flex items-center px-6 h-full rounded-tl-[16px] transition-colors duration-200 z-20 ${
                   isActive
-                    ? "bg-white text-[#001552] font-semibold text-[15px]"
-                    : "bg-[#e5e7eb] text-secondary"
+                    ? "bg-white text-dark-blue font-semibold text-[15px]"
+                    : "bg-bordergray text-secondary"
                 }`}
               >
                 <span className="relative z-30 tracking-wide">{tab}</span>
               </div>
-              <div className="bg-gray-200 text-gray-600 px-6 py-3 rounded-full 
-               [clip-path:polygon(0%_0%,85%_0%,100%_50%,85%_100%,0%_100%)]" />
+              <div
+                className="bg-gray-200 text-gray-600 px-6 py-3 rounded-full 
+               [clip-path:polygon(0%_0%,85%_0%,100%_50%,85%_100%,0%_100%)]"
+              />
             </div>
           );
         })}
       </div>
     );
   }
-
- 
 };
 
 export default TabBar;

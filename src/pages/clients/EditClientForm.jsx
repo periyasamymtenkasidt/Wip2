@@ -1,8 +1,35 @@
 import React, { useState } from "react";
 import { GrLocation } from "react-icons/gr";
 import { Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { yupResolver } from "@hookform/resolvers/yup";
+import * as yup from "yup";
 import InputField from "../../components/InputField";
 import Modal from "../../components/Modal";
+
+const editClientSchema = yup.object().shape({
+  clientName: yup.string().trim().required("Client Name is required"),
+  clientPhone: yup
+    .string()
+    .required("Phone Number is required")
+    .transform((v) => v?.replace(/\s/g, ""))
+    .matches(/^\d{10}$/, "Must be a 10-digit number"),
+  clientEmail: yup
+    .string()
+    .required("Email Address is required")
+    .trim()
+    .matches(
+      /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+      "Enter a valid email address",
+    ),
+  location: yup.string().required("Property Type is required"),
+  locationSecondary: yup
+    .string()
+    .trim()
+    .required("City / Location is required"),
+  budget: yup.string().trim().required("Budget is required"),
+  paymentStatus: yup.string().required("Payment Status is required"),
+});
 
 const INITIAL_FORM_STATE = {
   clientName: "",
@@ -23,23 +50,18 @@ const propertyTypes = [
 
 const FIELD_CONFIG = {
   clientInfo: [
-    { name: "clientName", label: "Client Name", type: "text", placeholder: "Full name", required: true },
+    { name: "clientName", label: "Client Name", type: "text", placeholder: "Full name" },
     {
       name: "clientPhone", label: "Phone Number", type: "tel", placeholder: "10-digit number",
-      required: true,
-      validation: (val) => !/^\d{10}$/.test(val.replace(/\s/g, "")) ? "Must be a 10-digit number" : null,
     },
     {
       name: "clientEmail", label: "Email Address", type: "email", placeholder: "example@domain.com",
-      required: true,
-      validation: (val) =>
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val.trim()) ? "Enter a valid email address" : null,
     },
   ],
   propertyDetails: [
-    { name: "location", label: "Property Type", type: "select", options: propertyTypes, required: true },
-    { name: "locationSecondary", label: "City / Location", type: "text", placeholder: "e.g. Beverly Hills, CA", icon: GrLocation, required: true },
-    { name: "budget", label: "Budget", type: "text", placeholder: "e.g. ₹60 – 70L", required: true },
+    { name: "location", label: "Property Type", type: "select", options: propertyTypes },
+    { name: "locationSecondary", label: "City / Location", type: "text", placeholder: "e.g. Beverly Hills, CA", icon: GrLocation },
+    { name: "budget", label: "Budget", type: "text", placeholder: "e.g. ₹60 – 70L" },
   ],
 };
 
@@ -51,58 +73,34 @@ const SectionHeader = ({ children }) => (
 );
 
 function EditClientForm({ initialData, onClose, onSave, hasMilestones = false }) {
-  const [formData, setFormData] = useState(() => {
-    if (initialData) {
-      return {
-        clientName: initialData.clientName || "",
-        clientPhone: initialData.clientPhone || "",
-        clientEmail: initialData.clientEmail || "",
-        location: initialData.location || "",
-        locationSecondary: initialData.locationSecondary || "",
-        budget: initialData.budget || "",
-        paymentStatus: initialData.paymentStatus || "",
-      };
-    }
-    return INITIAL_FORM_STATE;
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm({
+    resolver: yupResolver(editClientSchema),
+    defaultValues: initialData
+      ? {
+          clientName: initialData.clientName || "",
+          clientPhone: initialData.clientPhone || "",
+          clientEmail: initialData.clientEmail || "",
+          location: initialData.location || "",
+          locationSecondary: initialData.locationSecondary || "",
+          budget: initialData.budget || "",
+          paymentStatus: initialData.paymentStatus || "",
+        }
+      : INITIAL_FORM_STATE,
   });
-  const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (errors[name]) setErrors((prev) => ({ ...prev, [name]: "" }));
-  };
+  const paymentStatus = watch("paymentStatus");
 
-  const validate = () => {
-    const newErrors = {};
-    const allFields = [
-      ...FIELD_CONFIG.clientInfo,
-      ...FIELD_CONFIG.propertyDetails,
-      { name: "paymentStatus", label: "Payment Status", required: true },
-    ];
-    allFields.forEach((f) => {
-      const val = formData[f.name];
-      if (f.required && (!val || !val.toString().trim())) {
-        newErrors[f.name] = `${f.label} is required`;
-      } else if (f.validation) {
-        const msg = f.validation(val);
-        if (msg) newErrors[f.name] = msg;
-      }
-    });
-    return newErrors;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    const newErrors = validate();
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
+  const onSubmit = async (data) => {
     setIsSubmitting(true);
     try {
-      await onSave?.(formData);
+      await onSave?.(data);
       onClose?.();
     } finally {
       setIsSubmitting(false);
@@ -115,9 +113,8 @@ function EditClientForm({ initialData, onClose, onSave, hasMilestones = false })
       name={cfg.name}
       label={cfg.label}
       type={cfg.type}
-      value={formData[cfg.name]}
-      onChange={handleChange}
-      error={errors[cfg.name]}
+      register={register(cfg.name)}
+      error={errors[cfg.name]?.message}
       placeholder={cfg.placeholder}
       options={cfg.options}
       icon={cfg.icon}
@@ -157,7 +154,7 @@ function EditClientForm({ initialData, onClose, onSave, hasMilestones = false })
       onClose={isSubmitting ? undefined : onClose}
       footer={footer}
     >
-      <form id="edit-client-form" onSubmit={handleSubmit} noValidate>
+      <form id="edit-client-form" onSubmit={handleSubmit(onSubmit)} noValidate>
 
         <div className="mb-6">
           <SectionHeader>Client Information</SectionHeader>
@@ -187,12 +184,12 @@ function EditClientForm({ initialData, onClose, onSave, hasMilestones = false })
                 <p className="text-[11px] text-text-subtle mt-0.5">Status updates automatically as milestones are marked paid.</p>
               </div>
               <span className={`px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider border ${
-                formData.paymentStatus?.toLowerCase() === "completed" ? "bg-green-50 text-green-700 border-green-200" :
-                formData.paymentStatus?.toLowerCase() === "pending"   ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
-                formData.paymentStatus?.toLowerCase() === "failed"    ? "bg-red-50 text-red-600 border-red-200" :
+                paymentStatus?.toLowerCase() === "completed" ? "bg-green-50 text-green-700 border-green-200" :
+                paymentStatus?.toLowerCase() === "pending"   ? "bg-yellow-50 text-yellow-700 border-yellow-200" :
+                paymentStatus?.toLowerCase() === "failed"    ? "bg-red-50 text-red-600 border-red-200" :
                 "bg-gray-50 text-gray-500 border-gray-200"
               }`}>
-                {formData.paymentStatus || "Pending"}
+                {paymentStatus || "Pending"}
               </span>
             </div>
           ) : (
@@ -203,9 +200,9 @@ function EditClientForm({ initialData, onClose, onSave, hasMilestones = false })
                   <button
                     key={status}
                     type="button"
-                    onClick={() => handleChange({ target: { name: "paymentStatus", value: status } })}
+                    onClick={() => setValue("paymentStatus", status, { shouldValidate: true })}
                     className={`flex-1 py-2 rounded-lg text-xs font-medium capitalize border transition-all ${
-                      formData.paymentStatus === status
+                      paymentStatus === status
                         ? "bg-active-bg border-select-blue text-select-blue"
                         : "bg-white border-border text-text-muted hover:bg-bg-soft"
                     }`}
@@ -215,7 +212,7 @@ function EditClientForm({ initialData, onClose, onSave, hasMilestones = false })
                 ))}
               </div>
               {errors.paymentStatus && (
-                <p className="text-red-500 text-[11px] mt-1">{errors.paymentStatus}</p>
+                <p className="text-red-500 text-[11px] mt-1">{errors.paymentStatus.message}</p>
               )}
             </div>
           )}

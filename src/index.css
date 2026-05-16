@@ -6,15 +6,24 @@
   /* Brand */
   --color-primary: #1a2b4d;
   --color-select-blue: #1e3a8a;
+  --color-dark-blue:#001552;
 
   /* Backgrounds */
   --color-overallbg: #f4f4f4;
   --color-surface: #ffffff;
   --color-bg-soft: #f1f5f9;
   --color-active-bg: #e2eefe;
+  --color-palewhite:#f8fafc;
+  --color-light-gray:#f4f5f7;
 
   /* Borders */
   --color-bordergray: #e2e8f0;
+  --color-grayborder:#dfdfdf;
+
+  /*Client profile*/
+  --color-emarold:#10b981;
+  --color-orange:#f97316;
+  --color-pending:#D97706;
 
   /* Text */
   --color-textcolor: #0f172a;
@@ -22,7 +31,20 @@
   --color-text-subtle: #94a3b8;
   --color-grey: #475569;
   --color-secondary: #9ca3af;
+  --color-sky-blue:#3b82f6;
+  --color-darkgray:#1e293b;
+  --color-midgray:#334155;
+  --color-dark-yellow:#8b6914;
+  --color-gray-text:#7b7b7b;
+
+  /*Background and Border*/
+--color-purple:#0a1b49;
+--color-paleorange:#c5a367;
+
+/*placeholders*/
+--color-placeholder:#cbd5e1;
 }
+
 
 /* Logo shimmer sweep — used on the WIP brand block in the app header.
    A soft highlight glides across the logo every few seconds. */

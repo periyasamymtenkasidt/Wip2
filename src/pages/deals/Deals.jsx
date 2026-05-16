@@ -22,10 +22,10 @@ const STAGES = [
     name: "Booking Token",
     pct: 20,
     icon: FaRegHandshake,
-    color: "#1e3a8a",
+    color: "var(--color-select-blue)",
     bg: "#eef2ff",
     border: "#c7d2fe",
-    badge: { bg: "#dbeafe", color: "#1e3a8a" },
+    badge: { bg: "#dbeafe", color: "var(--color-select-blue)" },
   },
   {
     idx: 1,
@@ -52,7 +52,7 @@ const STAGES = [
     name: "Work in Progress",
     pct: 25,
     icon: FiTool,
-    color: "#d97706",
+    color: "var(--color-pending)",
     bg: "#fffbeb",
     border: "#fde68a",
     badge: { bg: "#fef3c7", color: "#b45309" },
@@ -144,7 +144,9 @@ const buildMilestones = (client) => {
 
 const getStaticOverride = (clientID) => {
   try {
-    const o = JSON.parse(localStorage.getItem("staticClientStatusOverrides") || "{}");
+    const o = JSON.parse(
+      localStorage.getItem("staticClientStatusOverrides") || "{}",
+    );
     return o[clientID];
   } catch {
     return undefined;
@@ -160,7 +162,9 @@ const updatePaymentStatus = (clientID, status) => {
     localStorage.setItem("newClientsData", JSON.stringify(newClients));
     return;
   }
-  const o = JSON.parse(localStorage.getItem("staticClientStatusOverrides") || "{}");
+  const o = JSON.parse(
+    localStorage.getItem("staticClientStatusOverrides") || "{}",
+  );
   o[clientID] = status;
   localStorage.setItem("staticClientStatusOverrides", JSON.stringify(o));
 };
@@ -211,10 +215,25 @@ const buildAllProjects = () => {
 
 const urgencyOf = (days) => {
   if (days <= 7)
-    return { dot: "#10b981", chipBg: "#ecfdf5", chipText: "#047857", label: "On track" };
+    return {
+      dot: "var(--color-emarold)",
+      chipBg: "#ecfdf5",
+      chipText: "#047857",
+      label: "On track",
+    };
   if (days <= 14)
-    return { dot: "#f59e0b", chipBg: "#fffbeb", chipText: "#b45309", label: "Watch" };
-  return { dot: "#ef4444", chipBg: "#fef2f2", chipText: "#b91c1c", label: "Overdue" };
+    return {
+      dot: "#f59e0b",
+      chipBg: "#fffbeb",
+      chipText: "#b45309",
+      label: "Watch",
+    };
+  return {
+    dot: "#ef4444",
+    chipBg: "#fef2f2",
+    chipText: "#b91c1c",
+    label: "Overdue",
+  };
 };
 
 // ─── Card ────────────────────────────────────────────────────────────────────
@@ -298,10 +317,7 @@ const ProjectCard = ({
           <p className="text-[9px] uppercase tracking-wider font-bold text-text-subtle mb-0.5">
             Stage Due
           </p>
-          <p
-            className="text-[12px] font-bold"
-            style={{ color: stage.color }}
-          >
+          <p className="text-[12px] font-bold" style={{ color: stage.color }}>
             {formatINR(milestone?.total)}
           </p>
         </div>
@@ -359,7 +375,7 @@ const KanbanColumn = ({
       <div
         className="px-4 py-3 shrink-0"
         style={{
-          borderBottom: `1px solid ${isOver ? stage.border : "#f1f5f9"}`,
+          borderBottom: `1px solid ${isOver ? stage.border : "var(--color-bg-soft)"}`,
         }}
       >
         <div className="flex items-center gap-2.5 mb-1.5">
@@ -499,7 +515,8 @@ const CompletedSwimlane = ({ projects, onView }) => {
               </span>
               <span className="flex items-center gap-1 text-text-muted">
                 <FiCalendar size={10} />
-                {p.milestones[p.milestones.length - 1]?.paidDate || p.client.joinDate}
+                {p.milestones[p.milestones.length - 1]?.paidDate ||
+                  p.client.joinDate}
               </span>
             </div>
           </button>
@@ -556,10 +573,7 @@ const ConfirmPaidModal = ({ project, stage, onClose, onConfirm }) => {
           </p>
           <p className="text-[14px] font-bold text-text">{stage.name}</p>
         </div>
-        <span
-          style={{ color: stage.color }}
-          className="text-[18px] font-bold"
-        >
+        <span style={{ color: stage.color }} className="text-[18px] font-bold">
           {milestone.pct}%
         </span>
       </div>
@@ -623,7 +637,9 @@ export default function Deals() {
     if (!project || project.currentStageIdx < 0) return;
     const today = formatDDMMYYYY(new Date());
     const updated = project.milestones.map((m, i) =>
-      i === project.currentStageIdx ? { ...m, status: "paid", paidDate: today } : m,
+      i === project.currentStageIdx
+        ? { ...m, status: "paid", paidDate: today }
+        : m,
     );
     localStorage.setItem(milestoneKey(clientID), JSON.stringify(updated));
     if (updated.every((m) => m.status === "paid")) {
@@ -647,7 +663,7 @@ export default function Deals() {
     <>
       <style>{`
         ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb { background: var(--color-bordergray); border-radius: 99px; }
         .col-scroll::-webkit-scrollbar { display: none; }
       `}</style>
 
@@ -668,7 +684,10 @@ export default function Deals() {
               return (
                 <div
                   key={stage.idx}
-                  style={{ background: stage.badge.bg, color: stage.badge.color }}
+                  style={{
+                    background: stage.badge.bg,
+                    color: stage.badge.color,
+                  }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold"
                 >
                   <stage.icon size={11} />

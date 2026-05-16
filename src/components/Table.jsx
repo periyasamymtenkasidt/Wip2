@@ -229,8 +229,8 @@ const Table = ({
                           <div
                             className={`relative flex items-center px-6 h-full rounded-t-[16px] transition-colors duration-200 z-20 ${
                               isActive
-                                ? "bg-white text-[#001552] font-semibold text-[15px]"
-                                : "bg-[#e5e7eb] text-secondary"
+                                ? "bg-white text-dark-blue font-semibold text-[15px]"
+                                : "bg-bordergray text-secondary"
                             }`}
                           >
                             <span className="relative z-30 tracking-wide">
@@ -276,13 +276,13 @@ const Table = ({
                         onClick={() => handleSubTabClick(i)}
                         className={`pb-3 pt-1 text-[15px] transition-all relative whitespace-nowrap ${
                           activeSubTab === i
-                            ? "text-[#001552] font-semibold"
-                            : "text-secondary hover:text-[#001552]"
+                            ? "text-dark-blue font-semibold"
+                            : "text-secondary hover:text-dark-blue"
                         }`}
                       >
                         {tab}
                         {activeSubTab === i && (
-                          <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[#001552] rounded-t-lg" />
+                          <div className="absolute bottom-0 left-0 w-full h-[3px] bg-dark-blue rounded-t-lg" />
                         )}
                       </button>
                     ))}
@@ -375,11 +375,11 @@ const Table = ({
                           ? "bg-active-bg shadow-[0_4px_15px_rgba(0,0,0,0.08)]"
                           : "bg-white shadow-[0_2px_10px_rgba(0,0,0,0.03)] group-hover:shadow-[0_6px_20px_rgba(0,0,0,0.06)] group-hover:bg-gray-50/50";
                         const borderClass = isSelected
-                          ? isFirst
-                            ? "border-l-[3px] border-l-[#1E3A8A] border-t-[1.5px] border-b-[1.5px] border-t-[#1E3A8A]/30 border-b-[#1E3A8A]/30"
-                            : isLast
-                              ? "border-r-[3px] border-r-[#1E3A8A] border-t-[1.5px] border-b-[1.5px] border-t-[#1E3A8A]/30 border-b-[#1E3A8A]/30"
-                              : "border-t-[1.5px] border-b-[1.5px] border-t-[#1E3A8A]/30 border-b-[#1E3A8A]/30"
+                            ? isFirst
+                              ? "border-l-[3px] border-l-select-blue border-t-[1.5px] border-b-[1.5px] border-t-select-blue/30 border-b-select-blue/30"
+                              : isLast
+                                ? "border-r-[3px] border-r-select-blue border-t-[1.5px] border-b-[1.5px] border-t-select-blue/30 border-b-select-blue/30"
+                                : "border-t-[1.5px] border-b-[1.5px] border-t-select-blue/30 border-b-select-blue/30"
                           : "";
 
                         return (
@@ -396,7 +396,7 @@ const Table = ({
                               ${isFirst ? "rounded-l-2xl pl-5" : ""}
                               ${isLast ? "rounded-r-2xl pr-5" : ""}
                               ${bgClass} ${borderClass}
-                              ${isClickableCell ? "cursor-pointer hover:text-[#1E3A8A] hover:underline underline-offset-2" : ""}`}
+                              ${isClickableCell ? "cursor-pointer hover:text-select-blue hover:underline underline-offset-2" : ""}`}
                           >
                             {col.render
                               ? col.render(item[col.key], item, index)

@@ -37,7 +37,7 @@ export default function ExportButton({ data, config }) {
     <button
       onClick={handleExport}
       title="Export CSV"
-      className="p-2 rounded-md shadow-sm border border-[#dfdfdf] bg-white text-[#7b7b7b] hover:bg-gray-50 transition-colors"
+      className="p-2 rounded-md shadow-sm border border-grayborder bg-white text-gray-text hover:bg-gray-50 transition-colors"
     >
       <Download size={17} />
     </button>

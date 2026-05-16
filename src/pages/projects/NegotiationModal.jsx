@@ -13,7 +13,7 @@ const NegotiationModal = ({ onClose, onConfirm }) => {
             <FiTrendingUp size={22} />
           </div>
           <div>
-            <h2 className="text-[18px] font-bold text-[#1e293b]">
+            <h2 className="text-[18px] font-bold text-darkgray">
               Move to Negotiation
             </h2>
             <p className="text-[12px] text-text-muted mt-0.5">
