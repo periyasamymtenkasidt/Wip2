@@ -35,6 +35,8 @@ import {
   computeTotals,
   generateInvestmentBands,
   getMultiplierFor,
+  getPropertyTypesForPreset,
+  getConfigForType,
 } from "../../data/QuotePresets";
 
 const DEFAULT_PRESET = "2BHK";
@@ -43,11 +45,11 @@ const DEFAULT_PRESET = "2BHK";
 // propertyType + sizeRange — these mirror the fields managed in
 // Settings → Proposal Master.
 const buildPresetState = (key) => {
-  const preset = getPreset(key);
+  const cfg = getConfigForType(key);
   return {
     quotePreset: key,
-    quoteSizeRange: preset?.sizeRange || "",
-    propertyType: preset?.propertyType || "",
+    quoteSizeRange: cfg?.sizeRange || "",
+    propertyType: cfg?.propertyType || "",
   };
 };
 
@@ -162,8 +164,11 @@ function NewInquiriesform({ onClose, onAddLead }) {
   );
 
   const presetTotals = useMemo(
-    () => (activePreset ? computeTotals(activePreset.scopeItems || []) : null),
-    [activePreset],
+    () => {
+      const cfg = getConfigForType(quotePreset, propertyType);
+      return cfg ? computeTotals(cfg.scopeItems || []) : null;
+    },
+    [quotePreset, propertyType],
   );
 
   // Property-type multiplier scales the preset's baseline (penthouse may
@@ -310,7 +315,7 @@ function NewInquiriesform({ onClose, onAddLead }) {
               label="Property Type"
               type="select"
               register={register("propertyType")}
-              options={activePreset?.propertyTypes || []}
+              options={getPropertyTypesForPreset(quotePreset)}
               error={errors.propertyType?.message}
             />
           </div>
@@ -323,7 +328,7 @@ function NewInquiriesform({ onClose, onAddLead }) {
                     Size Range
                   </span>
                   <strong className="text-text">
-                    {activePreset.sizeRange || "—"}
+                    {activePreset?.configurations?.[0]?.sizeRange || "—"}
                   </strong>
                 </span>
                 {presetTotals && (
@@ -347,7 +352,7 @@ function NewInquiriesform({ onClose, onAddLead }) {
                     Applies to
                   </span>
                   <strong className="text-text">
-                    {(activePreset.propertyTypes || []).join(", ") || "—"}
+                    {getPropertyTypesForPreset(quotePreset).join(", ") || "—"}
                   </strong>
                 </span>
               </div>

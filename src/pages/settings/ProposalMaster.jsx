@@ -60,14 +60,18 @@ const blankScope = () => ({
   materials: [],
 });
 
-const blankPreset = () => ({
+const blankPreset = (propertyType = "Apartment") => ({
   label: "New Preset",
-  propertyType: "Apartment",
-  propertyTypes: ["Apartment"],
-  sizeRange: "",
-  scopeItems: [],
-  inclusions: [],
-  exclusions: [],
+  configurations: [
+    {
+      propertyType,
+      multiplier: 1,
+      sizeRange: "",
+      scopeItems: [],
+      inclusions: [],
+      exclusions: [],
+    },
+  ],
 });
 
 const inputBase =
@@ -89,14 +93,62 @@ const CATEGORY_STYLES = {
 };
 
 const COLOR_MAP = {
-  blue: { bg: "bg-blue-50", text: "text-blue-700", bar: "bg-blue-500", dot: "bg-blue-500", border: "border-blue-200" },
-  orange: { bg: "bg-orange-50", text: "text-orange-700", bar: "bg-orange-500", dot: "bg-orange-500", border: "border-orange-200" },
-  purple: { bg: "bg-purple-50", text: "text-purple-700", bar: "bg-purple-500", dot: "bg-purple-500", border: "border-purple-200" },
-  teal: { bg: "bg-teal-50", text: "text-teal-700", bar: "bg-teal-500", dot: "bg-teal-500", border: "border-teal-200" },
-  amber: { bg: "bg-amber-50", text: "text-amber-700", bar: "bg-amber-500", dot: "bg-amber-500", border: "border-amber-200" },
-  indigo: { bg: "bg-indigo-50", text: "text-indigo-700", bar: "bg-indigo-500", dot: "bg-indigo-500", border: "border-indigo-200" },
-  slate: { bg: "bg-slate-100", text: "text-slate-700", bar: "bg-slate-500", dot: "bg-slate-500", border: "border-slate-200" },
-  gray: { bg: "bg-bg-soft", text: "text-text-muted", bar: "bg-text-subtle", dot: "bg-text-subtle", border: "border-bordergray" },
+  blue: {
+    bg: "bg-blue-50",
+    text: "text-blue-700",
+    bar: "bg-blue-500",
+    dot: "bg-blue-500",
+    border: "border-blue-200",
+  },
+  orange: {
+    bg: "bg-orange-50",
+    text: "text-orange-700",
+    bar: "bg-orange-500",
+    dot: "bg-orange-500",
+    border: "border-orange-200",
+  },
+  purple: {
+    bg: "bg-purple-50",
+    text: "text-purple-700",
+    bar: "bg-purple-500",
+    dot: "bg-purple-500",
+    border: "border-purple-200",
+  },
+  teal: {
+    bg: "bg-teal-50",
+    text: "text-teal-700",
+    bar: "bg-teal-500",
+    dot: "bg-teal-500",
+    border: "border-teal-200",
+  },
+  amber: {
+    bg: "bg-amber-50",
+    text: "text-amber-700",
+    bar: "bg-amber-500",
+    dot: "bg-amber-500",
+    border: "border-amber-200",
+  },
+  indigo: {
+    bg: "bg-indigo-50",
+    text: "text-indigo-700",
+    bar: "bg-indigo-500",
+    dot: "bg-indigo-500",
+    border: "border-indigo-200",
+  },
+  slate: {
+    bg: "bg-slate-100",
+    text: "text-slate-700",
+    bar: "bg-slate-500",
+    dot: "bg-slate-500",
+    border: "border-slate-200",
+  },
+  gray: {
+    bg: "bg-bg-soft",
+    text: "text-text-muted",
+    bar: "bg-text-subtle",
+    dot: "bg-text-subtle",
+    border: "border-bordergray",
+  },
 };
 
 const getCategory = (area) => {
@@ -116,13 +168,29 @@ const extractAvgSqft = (sizeRange) => {
 
 // Quick-add chips: common rooms users add most often.
 const QUICK_AREAS = [
-  { name: "Living Room", icon: Sofa, hint: "False ceiling, TV unit, accent wall" },
+  {
+    name: "Living Room",
+    icon: Sofa,
+    hint: "False ceiling, TV unit, accent wall",
+  },
   { name: "Kitchen", icon: ChefHat, hint: "Modular kitchen, granite, chimney" },
-  { name: "Master Bedroom", icon: Bed, hint: "Wardrobe, bed back panel, dresser" },
+  {
+    name: "Master Bedroom",
+    icon: Bed,
+    hint: "Wardrobe, bed back panel, dresser",
+  },
   { name: "Bedroom", icon: Bed, hint: "Wardrobe, study unit, lighting" },
   { name: "Bathroom", icon: Bath, hint: "Vanity, mirror, shower partition" },
-  { name: "Foyer & Passage", icon: DoorOpen, hint: "Shoe rack, console, accent paint" },
-  { name: "Study / Office", icon: BookOpen, hint: "Built-in desk, storage, lighting" },
+  {
+    name: "Foyer & Passage",
+    icon: DoorOpen,
+    hint: "Shoe rack, console, accent paint",
+  },
+  {
+    name: "Study / Office",
+    icon: BookOpen,
+    hint: "Built-in desk, storage, lighting",
+  },
 ];
 
 // Common material presets per category — one-click add to a scope row.
@@ -176,6 +244,15 @@ const ProposalMaster = () => {
 
   const presetKeys = Object.keys(master);
   const active = master[activeKey];
+  const [activeConfigIdx, setActiveConfigIdx] = useState(0);
+
+  // Reset config tab when switching presets
+  useEffect(() => {
+    setActiveConfigIdx(0);
+  }, [activeKey]);
+
+  // Derived: the currently-active property-type configuration
+  const activeConfig = active?.configurations?.[activeConfigIdx] || active?.configurations?.[0];
 
   useEffect(() => {
     saveMaster(master);
@@ -193,6 +270,7 @@ const ProposalMaster = () => {
 
   const askConfirm = (cfg) => setConfirmDialog(cfg);
 
+  // Preset-level updates (e.g. label)
   const updateActive = (changes) => {
     setMaster((prev) => ({
       ...prev,
@@ -200,44 +278,38 @@ const ProposalMaster = () => {
     }));
   };
 
-  const updateScope = (idx, key, value) => {
+  // Config-level updates (scope, inclusions, exclusions, sizeRange, etc.)
+  const setConfigField = (updater) => {
     setMaster((prev) => {
-      const items = prev[activeKey].scopeItems.map((s, i) =>
-        i === idx ? { ...s, [key]: value } : s,
-      );
-      return {
-        ...prev,
-        [activeKey]: { ...prev[activeKey], scopeItems: items },
-      };
+      const preset = prev[activeKey];
+      const configs = [...(preset.configurations || [])];
+      configs[activeConfigIdx] = updater({ ...configs[activeConfigIdx] });
+      return { ...prev, [activeKey]: { ...preset, configurations: configs } };
     });
+  };
+
+  const updateScope = (idx, key, value) => {
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.map((s, i) =>
+        i === idx ? { ...s, [key]: value } : s,
+      ),
+    }));
   };
 
   const addScopeRow = (preset) => {
     const newRow = preset
-      ? {
-          area: preset.name,
-          description: preset.hint || "",
-          amount: 0,
-          materials: [],
-        }
+      ? { area: preset.name, description: preset.hint || "", amount: 0, materials: [] }
       : blankScope();
-    setMaster((prev) => ({
-      ...prev,
-      [activeKey]: {
-        ...prev[activeKey],
-        scopeItems: [...prev[activeKey].scopeItems, newRow],
-      },
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: [...cfg.scopeItems, newRow],
     }));
-    setExpanded((p) => ({ ...p, [active.scopeItems.length]: false }));
+    setExpanded((p) => ({ ...p, [activeConfig?.scopeItems?.length || 0]: false }));
     if (preset) showToast(`Added "${preset.name}"`, "success");
   };
 
   // Save handler for the shared Item Form modal opened by "Add Scope".
-  // Maps the form's flat shape onto Proposal Master's scope-row shape:
-  //   form.description → area  (room / area name)
-  //   form.spec        → description (long scope-of-supply)
-  //   computed qty×rate → amount (lump sum)
-  //   form.materials   → materials
   const handleScopeFormSave = (form) => {
     const computed = computeLibraryItemAmount(form);
     const newRow = {
@@ -246,134 +318,103 @@ const ProposalMaster = () => {
       amount: computed,
       materials: form.materials ? form.materials.map((m) => ({ ...m })) : [],
     };
-    setMaster((prev) => ({
-      ...prev,
-      [activeKey]: {
-        ...prev[activeKey],
-        scopeItems: [...prev[activeKey].scopeItems, newRow],
-      },
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: [...cfg.scopeItems, newRow],
     }));
     setScopeFormOpen(false);
     showToast(`Added "${newRow.area || "scope"}"`, "success");
   };
 
   const removeScopeRow = (idx) => {
-    setMaster((prev) => ({
-      ...prev,
-      [activeKey]: {
-        ...prev[activeKey],
-        scopeItems: prev[activeKey].scopeItems.filter((_, i) => i !== idx),
-      },
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.filter((_, i) => i !== idx),
     }));
     showToast("Scope item removed", "info");
   };
 
   const updateMaterial = (scopeIdx, matIdx, key, value) => {
-    setMaster((prev) => {
-      const items = prev[activeKey].scopeItems.map((s, i) =>
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
-          ? {
-              ...s,
-              materials: (s.materials || []).map((m, j) =>
-                j === matIdx ? { ...m, [key]: value } : m,
-              ),
-            }
+          ? { ...s, materials: (s.materials || []).map((m, j) => j === matIdx ? { ...m, [key]: value } : m) }
           : s,
-      );
-      return {
-        ...prev,
-        [activeKey]: { ...prev[activeKey], scopeItems: items },
-      };
-    });
+      ),
+    }));
   };
 
   const addMaterial = (scopeIdx, preset) => {
     const newMat = preset ?? { name: "", spec: "" };
-    setMaster((prev) => {
-      const items = prev[activeKey].scopeItems.map((s, i) =>
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
           ? { ...s, materials: [...(s.materials || []), newMat] }
           : s,
-      );
-      return {
-        ...prev,
-        [activeKey]: { ...prev[activeKey], scopeItems: items },
-      };
-    });
+      ),
+    }));
     setExpanded((p) => ({ ...p, [scopeIdx]: true }));
   };
 
   const applyMaterialKit = (scopeIdx) => {
-    const item = active.scopeItems[scopeIdx];
+    const item = activeConfig.scopeItems[scopeIdx];
     const cat = getCategory(item.area);
     const kit =
       COMMON_MATERIALS[cat.color === "purple" ? "bedroom" : ""] ||
       COMMON_MATERIALS[
-        Object.keys(CATEGORY_STYLES).find(
-          (k) => (item.area || "").toLowerCase().includes(k),
+        Object.keys(CATEGORY_STYLES).find((k) =>
+          (item.area || "").toLowerCase().includes(k),
         ) || ""
       ];
     if (!kit) {
       showToast("Set the area first (e.g. Kitchen) to use the material kit", "info");
       return;
     }
-    setMaster((prev) => {
-      const items = prev[activeKey].scopeItems.map((s, i) =>
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
           ? { ...s, materials: [...(s.materials || []), ...kit] }
           : s,
-      );
-      return {
-        ...prev,
-        [activeKey]: { ...prev[activeKey], scopeItems: items },
-      };
-    });
+      ),
+    }));
     setExpanded((p) => ({ ...p, [scopeIdx]: true }));
     showToast(`Added ${kit.length} typical materials`, "success");
   };
 
   const removeMaterial = (scopeIdx, matIdx) => {
-    setMaster((prev) => {
-      const items = prev[activeKey].scopeItems.map((s, i) =>
+    setConfigField((cfg) => ({
+      ...cfg,
+      scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
-          ? {
-              ...s,
-              materials: (s.materials || []).filter((_, j) => j !== matIdx),
-            }
+          ? { ...s, materials: (s.materials || []).filter((_, j) => j !== matIdx) }
           : s,
-      );
-      return {
-        ...prev,
-        [activeKey]: { ...prev[activeKey], scopeItems: items },
-      };
-    });
+      ),
+    }));
   };
 
+  // Inclusions / exclusions list operations (config-level)
   const updateListItem = (key, idx, value) => {
-    setMaster((prev) => {
-      const list = [...(prev[activeKey][key] || [])];
+    setConfigField((cfg) => {
+      const list = [...(cfg[key] || [])];
       list[idx] = value;
-      return { ...prev, [activeKey]: { ...prev[activeKey], [key]: list } };
+      return { ...cfg, [key]: list };
     });
   };
 
   const addListItem = (key) => {
-    setMaster((prev) => ({
-      ...prev,
-      [activeKey]: {
-        ...prev[activeKey],
-        [key]: [...(prev[activeKey][key] || []), ""],
-      },
+    setConfigField((cfg) => ({
+      ...cfg,
+      [key]: [...(cfg[key] || []), ""],
     }));
   };
 
   const removeListItem = (key, idx) => {
-    setMaster((prev) => ({
-      ...prev,
-      [activeKey]: {
-        ...prev[activeKey],
-        [key]: (prev[activeKey][key] || []).filter((_, i) => i !== idx),
-      },
+    setConfigField((cfg) => ({
+      ...cfg,
+      [key]: (cfg[key] || []).filter((_, i) => i !== idx),
     }));
   };
 
@@ -522,7 +563,9 @@ const ProposalMaster = () => {
   }, [presetKeys, presetSearch, master]);
 
   const globalStats = useMemo(() => {
-    const allItems = presetKeys.flatMap((k) => master[k]?.scopeItems || []);
+    const allItems = presetKeys.flatMap((k) =>
+      (master[k]?.configurations || []).flatMap((c) => c.scopeItems || []),
+    );
     const totalAmount = allItems.reduce(
       (s, it) => s + (Number(it.amount) || 0),
       0,
@@ -536,24 +579,26 @@ const ProposalMaster = () => {
       items: allItems.length,
       materials: totalMaterials,
       avgQuote:
-        presetKeys.length > 0
-          ? Math.round(totalAmount / presetKeys.length)
-          : 0,
+        presetKeys.length > 0 ? Math.round(totalAmount / presetKeys.length) : 0,
     };
   }, [presetKeys, master]);
 
   const sortedScope = useMemo(() => {
-    if (!active) return [];
-    const copy = active.scopeItems.map((item, idx) => ({ item, idx }));
+    if (!activeConfig) return [];
+    const copy = (activeConfig.scopeItems || []).map((item, idx) => ({ item, idx }));
     if (sortBy === "amount-desc") {
-      copy.sort((a, b) => (Number(b.item.amount) || 0) - (Number(a.item.amount) || 0));
+      copy.sort(
+        (a, b) => (Number(b.item.amount) || 0) - (Number(a.item.amount) || 0),
+      );
     } else if (sortBy === "amount-asc") {
-      copy.sort((a, b) => (Number(a.item.amount) || 0) - (Number(b.item.amount) || 0));
+      copy.sort(
+        (a, b) => (Number(a.item.amount) || 0) - (Number(b.item.amount) || 0),
+      );
     } else if (sortBy === "area") {
       copy.sort((a, b) => (a.item.area || "").localeCompare(b.item.area || ""));
     }
     return copy;
-  }, [active, sortBy]);
+  }, [activeConfig, sortBy]);
 
   if (!active) {
     return (
@@ -561,12 +606,13 @@ const ProposalMaster = () => {
     );
   }
 
-  const totals = computeTotals(active.scopeItems);
+  const scopeItems = activeConfig?.scopeItems || [];
+  const totals = computeTotals(scopeItems);
   const maxScope = Math.max(
     1,
-    ...active.scopeItems.map((s) => Number(s.amount) || 0),
+    ...scopeItems.map((s) => Number(s.amount) || 0),
   );
-  const avgSqft = extractAvgSqft(active.sizeRange);
+  const avgSqft = extractAvgSqft(activeConfig?.sizeRange);
   const costPerSqft =
     avgSqft && totals.grandTotal
       ? Math.round(totals.grandTotal / avgSqft)
@@ -639,10 +685,30 @@ const ProposalMaster = () => {
 
         {/* Bento stats banner */}
         <div className="px-6 pb-4 grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <BentoStat icon={<Layers size={13} />} label="Presets" value={globalStats.presets} tint="blue" />
-          <BentoStat icon={<Hash size={13} />} label="Total Scope Items" value={globalStats.items} tint="purple" />
-          <BentoStat icon={<Package size={13} />} label="Material Specs" value={globalStats.materials} tint="orange" />
-          <BentoStat icon={<TrendingUp size={13} />} label="Avg Quote Value" value={formatAmount(globalStats.avgQuote)} tint="emerald" />
+          <BentoStat
+            icon={<Layers size={13} />}
+            label="Presets"
+            value={globalStats.presets}
+            tint="blue"
+          />
+          <BentoStat
+            icon={<Hash size={13} />}
+            label="Total Scope Items"
+            value={globalStats.items}
+            tint="purple"
+          />
+          <BentoStat
+            icon={<Package size={13} />}
+            label="Material Specs"
+            value={globalStats.materials}
+            tint="orange"
+          />
+          <BentoStat
+            icon={<TrendingUp size={13} />}
+            label="Avg Quote Value"
+            value={formatAmount(globalStats.avgQuote)}
+            tint="emerald"
+          />
         </div>
       </div>
 
@@ -663,7 +729,10 @@ const ProposalMaster = () => {
                 </span>
               </div>
               <div className="relative">
-                <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle" />
+                <Search
+                  size={12}
+                  className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle"
+                />
                 <input
                   type="text"
                   value={presetSearch}
@@ -682,7 +751,9 @@ const ProposalMaster = () => {
               ) : (
                 filteredKeys.map((k) => {
                   const p = master[k];
-                  const t = computeTotals(p.scopeItems || []);
+                  const allCfgItems = (p.configurations || []).flatMap((c) => c.scopeItems || []);
+                  const t = computeTotals(allCfgItems);
+                  const firstCfg = p.configurations?.[0];
                   const isActive = k === activeKey;
                   const cat = getCategory(p.label || k);
                   const c = COLOR_MAP[cat.color];
@@ -699,25 +770,31 @@ const ProposalMaster = () => {
                     >
                       <div className="flex items-center justify-between gap-2 mb-1">
                         <div className="flex items-center gap-2 min-w-0">
-                          <span className={`h-2 w-2 rounded-full shrink-0 ${c.dot}`} />
-                          <span className={`text-[12px] font-bold truncate ${isActive ? "text-select-blue" : "text-textcolor"}`}>
+                          <span
+                            className={`h-2 w-2 rounded-full shrink-0 ${c.dot}`}
+                          />
+                          <span
+                            className={`text-[12px] font-bold truncate ${isActive ? "text-select-blue" : "text-textcolor"}`}
+                          >
                             {k}
                           </span>
                         </div>
                         <span className="text-[10px] font-semibold text-text-muted bg-white/70 px-1.5 py-0.5 rounded-md border border-bordergray">
-                          {(p.scopeItems || []).length}
+                          {(p.configurations || []).length} type{(p.configurations || []).length === 1 ? "" : "s"}
                         </span>
                       </div>
                       <p className="text-[10.5px] text-text-muted truncate ml-4">
                         {p.label}
                       </p>
                       <div className="flex items-center justify-between gap-2 mt-1.5 ml-4">
-                        <p className={`text-[10.5px] font-bold tabular-nums ${isActive ? "text-select-blue" : "text-textcolor"}`}>
+                        <p
+                          className={`text-[10.5px] font-bold tabular-nums ${isActive ? "text-select-blue" : "text-textcolor"}`}
+                        >
                           {formatAmount(t.grandTotal)}
                         </p>
-                        {p.sizeRange && (
+                        {firstCfg?.sizeRange && (
                           <span className="text-[9.5px] text-text-subtle truncate">
-                            {p.sizeRange}
+                            {firstCfg.sizeRange}
                           </span>
                         )}
                       </div>
@@ -865,7 +942,11 @@ const ProposalMaster = () => {
               </div>
 
               <div className="relative p-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field icon={<Tag size={11} />} label="Label" hint="Shown on the proposal cover">
+                <Field
+                  icon={<Tag size={11} />}
+                  label="Label"
+                  hint="Shown on the proposal cover"
+                >
                   <input
                     type="text"
                     value={active.label}
@@ -873,35 +954,132 @@ const ProposalMaster = () => {
                     className={inputBase}
                   />
                 </Field>
-                <Field icon={<Ruler size={11} />} label="Size Range" hint="Used to compute ₹/sq ft">
+                <Field
+                  icon={<Ruler size={11} />}
+                  label="Size Range"
+                  hint="Per property type · used to compute ₹/sq ft"
+                >
                   <input
                     type="text"
-                    value={active.sizeRange}
-                    onChange={(e) => updateActive({ sizeRange: e.target.value })}
+                    value={activeConfig?.sizeRange || ""}
+                    onChange={(e) =>
+                      setConfigField((cfg) => ({ ...cfg, sizeRange: e.target.value }))
+                    }
                     placeholder="e.g. 800–1100 sq ft"
                     className={inputBase}
                   />
                 </Field>
               </div>
 
-              <div className="relative px-5 pb-5">
+              {/* ── Property Type Configuration Tabs ─────────────────── */}
+              <div className="relative px-5 pb-4">
                 <Field
                   icon={<Home size={11} />}
-                  label="Applies To"
-                  hint="Tick the property types · adjust × multiplier for premium / budget pricing"
+                  label="Property Types"
+                  hint="Each type has its own scope, pricing & inclusions"
                 >
-                  <PropertyTypeChips
-                    selected={active.propertyTypes || []}
-                    multipliers={active.propertyTypeMultipliers || {}}
-                    onChange={(next) =>
-                      updateActive({
-                        propertyTypes: next.types,
-                        propertyType: next.types[0] || "",
-                        propertyTypeMultipliers: next.multipliers,
-                      })
-                    }
-                  />
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {(active.configurations || []).map((cfg, idx) => (
+                      <button
+                        key={cfg.propertyType}
+                        type="button"
+                        onClick={() => setActiveConfigIdx(idx)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[11px] font-semibold transition-all ${
+                          idx === activeConfigIdx
+                            ? "bg-select-blue text-white border-select-blue shadow-sm"
+                            : "bg-white text-text-muted border-bordergray hover:border-select-blue/40 hover:text-select-blue"
+                        }`}
+                      >
+                        {idx === activeConfigIdx && <Check size={10} strokeWidth={3} />}
+                        {cfg.propertyType}
+                        {cfg.multiplier !== 1 && (
+                          <span className={`text-[9px] font-bold ml-0.5 ${
+                            idx === activeConfigIdx ? "text-white/80" : "text-select-blue"
+                          }`}>×{cfg.multiplier}</span>
+                        )}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const existing = (active.configurations || []).map((c) => c.propertyType);
+                        const available = PROPERTY_TYPES.filter((t) => !existing.includes(t));
+                        if (available.length === 0) {
+                          showToast("All property types are already added", "info");
+                          return;
+                        }
+                        const newType = available[0];
+                        setMaster((prev) => {
+                          const preset = prev[activeKey];
+                          const configs = [...(preset.configurations || [])];
+                          configs.push({
+                            propertyType: newType,
+                            multiplier: 1,
+                            sizeRange: configs[0]?.sizeRange || "",
+                            scopeItems: (configs[0]?.scopeItems || []).map((s) => ({
+                              ...s,
+                              materials: s.materials ? s.materials.map((m) => ({ ...m })) : [],
+                            })),
+                            inclusions: [...(configs[0]?.inclusions || [])],
+                            exclusions: [...(configs[0]?.exclusions || [])],
+                          });
+                          return { ...prev, [activeKey]: { ...preset, configurations: configs } };
+                        });
+                        setActiveConfigIdx((active.configurations || []).length);
+                        showToast(`Added "${newType}" configuration`, "success");
+                      }}
+                      className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-bordergray text-[11px] font-semibold text-text-muted hover:border-select-blue hover:text-select-blue transition-all"
+                    >
+                      <Plus size={11} /> Add Type
+                    </button>
+                  </div>
                 </Field>
+                {activeConfig && (
+                  <div className="mt-2 flex items-center gap-3">
+                    <div className="flex items-center gap-1.5 text-[11px]">
+                      <span className="text-text-subtle font-semibold">Multiplier:</span>
+                      <span className="text-[10px] font-semibold text-text-subtle">×</span>
+                      <input
+                        type="number"
+                        step="0.05"
+                        min="0.1"
+                        value={activeConfig.multiplier}
+                        onChange={(e) => {
+                          const parsed = parseFloat(e.target.value);
+                          const val = !isFinite(parsed) || parsed <= 0 ? 1 : parsed;
+                          setConfigField((cfg) => ({ ...cfg, multiplier: val }));
+                        }}
+                        title="Price multiplier vs baseline (1.0 = same)"
+                        className={`w-14 text-[11px] font-bold tabular-nums bg-white border border-bordergray rounded-md px-2 py-1 focus:outline-none focus:border-select-blue ${activeConfig.multiplier !== 1 ? "text-select-blue" : "text-textcolor"}`}
+                      />
+                    </div>
+                    {(active.configurations || []).length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          askConfirm({
+                            title: `Remove "${activeConfig.propertyType}"?`,
+                            message: "This property type configuration and its scope will be removed from this preset.",
+                            confirmLabel: "Remove",
+                            danger: true,
+                            onConfirm: () => {
+                              setMaster((prev) => {
+                                const preset = prev[activeKey];
+                                const configs = (preset.configurations || []).filter((_, i) => i !== activeConfigIdx);
+                                return { ...prev, [activeKey]: { ...preset, configurations: configs } };
+                              });
+                              setActiveConfigIdx(0);
+                              showToast(`Removed "${activeConfig.propertyType}"`, "info");
+                            },
+                          });
+                        }}
+                        className="flex items-center gap-1 text-[10px] font-semibold text-red-400 hover:text-red-600"
+                      >
+                        <Trash2 size={10} /> Remove Type
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {costPerSqft != null && (
@@ -930,9 +1108,8 @@ const ProposalMaster = () => {
                       Scope of Work
                     </h2>
                     <p className="text-[10.5px] text-text-muted">
-                      {active.scopeItems.length} area
-                      {active.scopeItems.length === 1 ? "" : "s"} · color-coded
-                      by category
+                      {scopeItems.length} area
+                      {scopeItems.length === 1 ? "" : "s"} · {activeConfig?.propertyType || ""}
                     </p>
                   </div>
                 </div>
@@ -1012,20 +1189,26 @@ const ProposalMaster = () => {
                         >
                           <GripVertical size={12} />
                         </button>
-                        <span className={`h-7 w-7 flex items-center justify-center rounded-lg ${c.bg} ${c.text}`}>
+                        <span
+                          className={`h-7 w-7 flex items-center justify-center rounded-lg ${c.bg} ${c.text}`}
+                        >
                           <Icon size={13} />
                         </span>
                         <input
                           type="text"
                           value={item.area}
-                          onChange={(e) => updateScope(idx, "area", e.target.value)}
+                          onChange={(e) =>
+                            updateScope(idx, "area", e.target.value)
+                          }
                           placeholder="Area (e.g. Living Room)"
                           className={`${inputBase} font-semibold`}
                         />
                         <input
                           type="text"
                           value={item.description}
-                          onChange={(e) => updateScope(idx, "description", e.target.value)}
+                          onChange={(e) =>
+                            updateScope(idx, "description", e.target.value)
+                          }
                           placeholder="Description"
                           className={inputBase}
                         />
@@ -1046,7 +1229,10 @@ const ProposalMaster = () => {
 
                       <div className="px-3 pb-2">
                         <div className="h-1 w-full bg-bg-soft rounded-full overflow-hidden">
-                          <div className={`h-full ${c.bar} transition-all`} style={{ width: `${barWidth}%` }} />
+                          <div
+                            className={`h-full ${c.bar} transition-all`}
+                            style={{ width: `${barWidth}%` }}
+                          />
                         </div>
                       </div>
 
@@ -1057,7 +1243,11 @@ const ProposalMaster = () => {
                           className="w-full flex items-center justify-between px-4 py-2 text-[11px] font-semibold text-text-muted hover:text-select-blue"
                         >
                           <span className="flex items-center gap-1.5">
-                            {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                            {isOpen ? (
+                              <ChevronDown size={12} />
+                            ) : (
+                              <ChevronRight size={12} />
+                            )}
                             Materials & Specifications
                             {matCount > 0 && (
                               <span className="ml-1 text-[10px] font-bold text-select-blue bg-white px-1.5 py-0.5 rounded-md border border-bordergray">
@@ -1067,27 +1257,51 @@ const ProposalMaster = () => {
                           </span>
                           {!isOpen && matCount > 0 && (
                             <span className="text-[10px] text-text-subtle truncate max-w-[60%]">
-                              {item.materials.map((m) => m.name).filter(Boolean).join(", ")}
+                              {item.materials
+                                .map((m) => m.name)
+                                .filter(Boolean)
+                                .join(", ")}
                             </span>
                           )}
-                          {isOpen && <span className="text-[10px] text-text-subtle">Hide</span>}
+                          {isOpen && (
+                            <span className="text-[10px] text-text-subtle">
+                              Hide
+                            </span>
+                          )}
                         </button>
 
                         {isOpen && (
                           <div className="px-4 pb-3 space-y-1.5">
                             {(item.materials || []).map((m, mIdx) => (
-                              <div key={mIdx} className="grid grid-cols-[130px_1fr_24px] gap-2 items-center">
+                              <div
+                                key={mIdx}
+                                className="grid grid-cols-[130px_1fr_24px] gap-2 items-center"
+                              >
                                 <input
                                   type="text"
                                   value={m.name}
-                                  onChange={(e) => updateMaterial(idx, mIdx, "name", e.target.value)}
+                                  onChange={(e) =>
+                                    updateMaterial(
+                                      idx,
+                                      mIdx,
+                                      "name",
+                                      e.target.value,
+                                    )
+                                  }
                                   placeholder="Plywood"
                                   className={`${inputBase} py-1.5 text-[11px]`}
                                 />
                                 <input
                                   type="text"
                                   value={m.spec}
-                                  onChange={(e) => updateMaterial(idx, mIdx, "spec", e.target.value)}
+                                  onChange={(e) =>
+                                    updateMaterial(
+                                      idx,
+                                      mIdx,
+                                      "spec",
+                                      e.target.value,
+                                    )
+                                  }
                                   placeholder="BWP 19mm"
                                   className={`${inputBase} py-1.5 text-[11px]`}
                                 />
@@ -1125,12 +1339,14 @@ const ProposalMaster = () => {
                   );
                 })}
 
-                {active.scopeItems.length === 0 && (
+                {scopeItems.length === 0 && (
                   <div className="text-center py-10 px-6 rounded-xl border border-dashed border-bordergray bg-linear-to-br from-bg-soft/60 to-active-bg/30">
                     <div className="h-12 w-12 rounded-2xl bg-white border border-bordergray flex items-center justify-center mx-auto mb-3 shadow-sm">
                       <Package size={18} className="text-select-blue" />
                     </div>
-                    <p className="text-[13px] font-bold text-textcolor">No scope items yet</p>
+                    <p className="text-[13px] font-bold text-textcolor">
+                      No scope items yet
+                    </p>
                     <p className="text-[11px] text-text-muted mt-1 max-w-xs mx-auto">
                       Use the quick-add chips above to add common rooms, or
                       start blank.
@@ -1153,18 +1369,23 @@ const ProposalMaster = () => {
             <section className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
               <div className="px-4 py-3 border-b border-bordergray flex items-center gap-2">
                 <BarChart3 size={13} className="text-select-blue" />
-                <h3 className="text-[12px] font-bold text-textcolor">Cost Breakdown</h3>
+                <h3 className="text-[12px] font-bold text-textcolor">
+                  Cost Breakdown
+                </h3>
               </div>
               <div className="p-4 space-y-3">
-                {active.scopeItems.length === 0 ? (
+                {scopeItems.length === 0 ? (
                   <p className="text-[11px] text-text-subtle text-center py-2">
                     Add scope items to see distribution
                   </p>
                 ) : (
-                  active.scopeItems
+                  scopeItems
                     .map((item, idx) => {
                       const amount = Number(item.amount) || 0;
-                      const pct = totals.subtotal > 0 ? Math.round((amount / totals.subtotal) * 100) : 0;
+                      const pct =
+                        totals.subtotal > 0
+                          ? Math.round((amount / totals.subtotal) * 100)
+                          : 0;
                       const cat = getCategory(item.area);
                       const c = COLOR_MAP[cat.color];
                       return { item, idx, amount, pct, c };
@@ -1180,11 +1401,16 @@ const ProposalMaster = () => {
                               {item.area || "Untitled"}
                             </span>
                           </span>
-                          <span className="text-[10.5px] font-bold text-text-muted tabular-nums">{pct}%</span>
+                          <span className="text-[10.5px] font-bold text-text-muted tabular-nums">
+                            {pct}%
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <div className="flex-1 h-1.5 bg-bg-soft rounded-full overflow-hidden">
-                            <div className={`h-full ${c.bar}`} style={{ width: `${pct}%` }} />
+                            <div
+                              className={`h-full ${c.bar}`}
+                              style={{ width: `${pct}%` }}
+                            />
                           </div>
                           <span className="text-[10px] font-semibold text-text-subtle tabular-nums w-14 text-right">
                             {formatAmount(amount)}
@@ -1194,11 +1420,11 @@ const ProposalMaster = () => {
                     ))
                 )}
               </div>
-              {active.scopeItems.length > 6 && (
+              {scopeItems.length > 6 && (
                 <div className="px-4 pb-3 -mt-1">
                   <p className="text-[10px] text-text-subtle text-center">
-                    + {active.scopeItems.length - 6} more area
-                    {active.scopeItems.length - 6 === 1 ? "" : "s"}
+                    + {scopeItems.length - 6} more area
+                    {scopeItems.length - 6 === 1 ? "" : "s"}
                   </p>
                 </div>
               )}
@@ -1208,7 +1434,7 @@ const ProposalMaster = () => {
               title="What's Included"
               icon={<CheckCircle2 size={13} className="text-emerald-600" />}
               accent="emerald"
-              items={active.inclusions || []}
+              items={activeConfig?.inclusions || []}
               onUpdate={(idx, v) => updateListItem("inclusions", idx, v)}
               onAdd={() => addListItem("inclusions")}
               onRemove={(idx) => removeListItem("inclusions", idx)}
@@ -1218,7 +1444,7 @@ const ProposalMaster = () => {
               title="Not Included"
               icon={<XCircle size={13} className="text-red-500" />}
               accent="red"
-              items={active.exclusions || []}
+              items={activeConfig?.exclusions || []}
               onUpdate={(idx, v) => updateListItem("exclusions", idx, v)}
               onAdd={() => addListItem("exclusions")}
               onRemove={(idx) => removeListItem("exclusions", idx)}
@@ -1241,17 +1467,27 @@ const ProposalMaster = () => {
                   {activeKey} · Quote Summary
                 </p>
                 <p className="text-[10.5px] text-text-muted">
-                  {active.scopeItems.length} items · {totals.subtotal > 0 ? "live" : "empty"}
+                  {scopeItems.length} items · {activeConfig?.propertyType || ""} ·{" "}
+                  {totals.subtotal > 0 ? "live" : "empty"}
                 </p>
               </div>
             </div>
             <div className="h-8 w-px bg-bordergray hidden sm:block" />
-            <FooterStat label="Subtotal" value={formatAmount(totals.subtotal)} />
-            <FooterStat label={`GST ${GST_RATE}%`} value={formatAmount(totals.gst)} accent="text-orange-500" />
+            <FooterStat
+              label="Subtotal"
+              value={formatAmount(totals.subtotal)}
+            />
+            <FooterStat
+              label={`GST ${GST_RATE}%`}
+              value={formatAmount(totals.gst)}
+              accent="text-orange-500"
+            />
             <div className="flex items-center gap-2 bg-linear-to-br from-select-blue to-primary text-white px-4 py-2 rounded-xl shadow-md shadow-select-blue/20">
               <IndianRupee size={13} />
               <div>
-                <p className="text-[8.5px] font-bold uppercase tracking-widest opacity-80">Grand Total</p>
+                <p className="text-[8.5px] font-bold uppercase tracking-widest opacity-80">
+                  Grand Total
+                </p>
                 <p className="text-[14px] font-bold tabular-nums leading-tight">
                   {formatAmount(totals.grandTotal)}
                 </p>
@@ -1262,7 +1498,9 @@ const ProposalMaster = () => {
       </div>
 
       {/* ── Toast ──────────────────────────────────────────────────────── */}
-      {toast && <Toast key={toast.id} toast={toast} onClose={() => setToast(null)} />}
+      {toast && (
+        <Toast key={toast.id} toast={toast} onClose={() => setToast(null)} />
+      )}
 
       {/* ── Confirm modal ──────────────────────────────────────────────── */}
       {confirmDialog && (
@@ -1277,7 +1515,9 @@ const ProposalMaster = () => {
       )}
 
       {/* ── Keyboard shortcuts modal ──────────────────────────────────── */}
-      {showShortcuts && <ShortcutsModal onClose={() => setShowShortcuts(false)} />}
+      {showShortcuts && (
+        <ShortcutsModal onClose={() => setShowShortcuts(false)} />
+      )}
 
       {/* ── Add Scope — reuses the shared Item Master form ─────────────── */}
       {scopeFormOpen && (
@@ -1310,7 +1550,9 @@ const AmountInput = ({ value, onChange, pct }) => {
       : value;
   return (
     <div className="relative">
-      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle text-[11px]">₹</span>
+      <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-subtle text-[11px]">
+        ₹
+      </span>
       <input
         type="number"
         value={display}
@@ -1371,9 +1613,7 @@ const PropertyTypeChips = ({ selected, multipliers, onChange }) => {
           <div
             key={type}
             className={`flex items-center rounded-lg border overflow-hidden transition-all ${
-              isOn
-                ? "border-select-blue shadow-sm"
-                : "border-bordergray"
+              isOn ? "border-select-blue shadow-sm" : "border-bordergray"
             }`}
           >
             <button
@@ -1438,31 +1678,56 @@ const BentoStat = ({ icon, label, value, tint }) => {
     emerald: "from-emerald-50 to-white text-emerald-600 border-emerald-100",
   };
   return (
-    <div className={`relative bg-linear-to-br ${tints[tint]} border rounded-xl p-3 overflow-hidden`}>
+    <div
+      className={`relative bg-linear-to-br ${tints[tint]} border rounded-xl p-3 overflow-hidden`}
+    >
       <div className="flex items-center justify-between mb-1">
         <span className="opacity-80">{icon}</span>
-        <span className="text-[9.5px] font-bold uppercase tracking-wider opacity-70">{label}</span>
+        <span className="text-[9.5px] font-bold uppercase tracking-wider opacity-70">
+          {label}
+        </span>
       </div>
-      <p className="text-[18px] font-bold text-textcolor tabular-nums leading-tight">{value}</p>
+      <p className="text-[18px] font-bold text-textcolor tabular-nums leading-tight">
+        {value}
+      </p>
     </div>
   );
 };
 
 const FooterStat = ({ label, value, accent = "text-textcolor" }) => (
   <div className="flex flex-col">
-    <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">{label}</span>
-    <span className={`text-[13px] font-bold tabular-nums ${accent}`}>{value}</span>
+    <span className="text-[9px] font-bold uppercase tracking-widest text-text-subtle">
+      {label}
+    </span>
+    <span className={`text-[13px] font-bold tabular-nums ${accent}`}>
+      {value}
+    </span>
   </div>
 );
 
-const ListEditor = ({ title, icon, items, onUpdate, onAdd, onRemove, placeholder, accent }) => {
+const ListEditor = ({
+  title,
+  icon,
+  items,
+  onUpdate,
+  onAdd,
+  onRemove,
+  placeholder,
+  accent,
+}) => {
   const bullet =
-    accent === "emerald" ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600";
+    accent === "emerald"
+      ? "bg-emerald-100 text-emerald-700"
+      : "bg-red-100 text-red-600";
   const headerTint =
-    accent === "emerald" ? "from-emerald-50/60 to-white" : "from-red-50/60 to-white";
+    accent === "emerald"
+      ? "from-emerald-50/60 to-white"
+      : "from-red-50/60 to-white";
   return (
     <div className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
-      <div className={`px-4 py-3 border-b border-bordergray bg-linear-to-r ${headerTint} flex items-center justify-between`}>
+      <div
+        className={`px-4 py-3 border-b border-bordergray bg-linear-to-r ${headerTint} flex items-center justify-between`}
+      >
         <div className="flex items-center gap-2">
           {icon}
           <h3 className="text-[12px] font-bold text-textcolor">{title}</h3>
@@ -1481,8 +1746,14 @@ const ListEditor = ({ title, icon, items, onUpdate, onAdd, onRemove, placeholder
       <div className="p-3 space-y-2">
         {items.map((item, idx) => (
           <div key={idx} className="flex items-start gap-2 group">
-            <span className={`mt-2 h-4 w-4 rounded-full flex items-center justify-center shrink-0 ${bullet}`}>
-              {accent === "emerald" ? <Check size={9} strokeWidth={3} /> : <X size={9} strokeWidth={3} />}
+            <span
+              className={`mt-2 h-4 w-4 rounded-full flex items-center justify-center shrink-0 ${bullet}`}
+            >
+              {accent === "emerald" ? (
+                <Check size={9} strokeWidth={3} />
+              ) : (
+                <X size={9} strokeWidth={3} />
+              )}
             </span>
             <input
               type="text"
@@ -1526,7 +1797,9 @@ const Toast = ({ toast, onClose }) => {
   const v = variants[toast.type] || variants.info;
   return (
     <div className="fixed top-6 right-6 z-50 animate-[slideIn_0.2s_ease-out]">
-      <div className={`${v.bg} text-white rounded-xl shadow-xl px-4 py-3 flex items-center gap-2.5 min-w-[260px] max-w-md`}>
+      <div
+        className={`${v.bg} text-white rounded-xl shadow-xl px-4 py-3 flex items-center gap-2.5 min-w-[260px] max-w-md`}
+      >
         <span className="shrink-0">{v.icon}</span>
         <p className="text-[12px] font-medium flex-1">{toast.message}</p>
         <button
@@ -1542,7 +1815,14 @@ const Toast = ({ toast, onClose }) => {
   );
 };
 
-const ConfirmDialog = ({ title, message, confirmLabel, danger, onCancel, onConfirm }) => (
+const ConfirmDialog = ({
+  title,
+  message,
+  confirmLabel,
+  danger,
+  onCancel,
+  onConfirm,
+}) => (
   <div
     className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4 animate-[fadeIn_0.15s_ease-out]"
     onClick={onCancel}
@@ -1554,14 +1834,18 @@ const ConfirmDialog = ({ title, message, confirmLabel, danger, onCancel, onConfi
       <div className="p-5 flex items-start gap-3">
         <span
           className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 ${
-            danger ? "bg-red-50 text-red-500" : "bg-select-blue/10 text-select-blue"
+            danger
+              ? "bg-red-50 text-red-500"
+              : "bg-select-blue/10 text-select-blue"
           }`}
         >
           {danger ? <AlertTriangle size={18} /> : <Info size={18} />}
         </span>
         <div>
           <h3 className="text-[14px] font-bold text-textcolor">{title}</h3>
-          <p className="text-[12px] text-text-muted mt-1 leading-relaxed">{message}</p>
+          <p className="text-[12px] text-text-muted mt-1 leading-relaxed">
+            {message}
+          </p>
         </div>
       </div>
       <div className="px-5 py-3 bg-bg-soft border-t border-bordergray flex items-center justify-end gap-2">
@@ -1577,7 +1861,9 @@ const ConfirmDialog = ({ title, message, confirmLabel, danger, onCancel, onConfi
           onClick={onConfirm}
           autoFocus
           className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold text-white shadow-sm ${
-            danger ? "bg-red-500 hover:bg-red-600" : "bg-select-blue hover:bg-primary"
+            danger
+              ? "bg-red-500 hover:bg-red-600"
+              : "bg-select-blue hover:bg-primary"
           }`}
         >
           {confirmLabel || "Confirm"}
@@ -1599,9 +1885,15 @@ const ShortcutsModal = ({ onClose }) => (
       <div className="px-5 py-4 border-b border-bordergray flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Keyboard size={14} className="text-select-blue" />
-          <h3 className="text-[13px] font-bold text-textcolor">Keyboard Shortcuts</h3>
+          <h3 className="text-[13px] font-bold text-textcolor">
+            Keyboard Shortcuts
+          </h3>
         </div>
-        <button type="button" onClick={onClose} className="text-text-subtle hover:text-textcolor">
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-text-subtle hover:text-textcolor"
+        >
           <X size={14} />
         </button>
       </div>
@@ -1620,7 +1912,10 @@ const Shortcut = ({ keys, label }) => (
     <span className="text-[12px] text-textcolor">{label}</span>
     <span className="flex items-center gap-1">
       {keys.map((k) => (
-        <kbd key={k} className="text-[10px] font-bold bg-bg-soft border border-bordergray rounded px-1.5 py-0.5 text-textcolor">
+        <kbd
+          key={k}
+          className="text-[10px] font-bold bg-bg-soft border border-bordergray rounded px-1.5 py-0.5 text-textcolor"
+        >
           {k}
         </kbd>
       ))}

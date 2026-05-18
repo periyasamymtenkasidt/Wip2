@@ -152,30 +152,82 @@ export const DEFAULT_PRESETS = {
 
 const MASTER_KEY = "quoteMaster";
 
-// One preset can apply to several physical property types (a 2BHK fit-out
-// is the same kitchen/wardrobe scope whether it's an apartment or a
-// penthouse). `propertyTypes` is the array of allowed types;
-// `propertyTypeMultipliers` is a parallel map of cost multipliers so the
-// same scope can quote at different prices per property type.
-// `propertyType` is kept as the primary/default for back-compat.
+// ── Configurations-based normalisation ────────────────────────────────────
+// Each preset now stores a `configurations` array. Each entry in that array
+// represents one property-type-specific configuration with its own scope,
+// inclusions, exclusions, sizeRange and multiplier.
+//
+// Old flat format (pre-migration):
+//   { propertyType, propertyTypes, propertyTypeMultipliers, sizeRange,
+//     scopeItems, inclusions, exclusions }
+//
+// New format:
+//   { label, configurations: [
+//       { propertyType, multiplier, sizeRange, scopeItems, inclusions, exclusions },
+//       ...
+//     ]
+//   }
+//
+// `normalizePreset` auto-migrates old flat presets into the new shape so
+// existing localStorage data keeps working seamlessly.
+
 const normalizePreset = (p) => {
   if (!p) return p;
   let next = { ...p };
-  if (Array.isArray(next.propertyTypes) && next.propertyTypes.length > 0) {
-    next.propertyType = next.propertyType || next.propertyTypes[0];
-  } else if (next.propertyType) {
-    next.propertyTypes = [next.propertyType];
-  } else {
-    next.propertyTypes = [];
-    next.propertyType = "";
+
+  // Already migrated — just ensure every config has all fields.
+  if (Array.isArray(next.configurations) && next.configurations.length > 0) {
+    next.configurations = next.configurations.map((c) => ({
+      propertyType: c.propertyType || "",
+      multiplier: typeof c.multiplier === "number" && c.multiplier > 0 ? c.multiplier : 1,
+      sizeRange: c.sizeRange ?? next.sizeRange ?? "",
+      scopeItems: c.scopeItems || [],
+      inclusions: c.inclusions || [],
+      exclusions: c.exclusions || [],
+    }));
+    // Remove legacy top-level fields after migration
+    delete next.propertyType;
+    delete next.propertyTypes;
+    delete next.propertyTypeMultipliers;
+    // Keep label at preset level
+    next.label = next.label || "";
+    return next;
   }
-  const multipliers = { ...(next.propertyTypeMultipliers || {}) };
-  for (const t of next.propertyTypes) {
-    if (typeof multipliers[t] !== "number" || multipliers[t] <= 0) {
-      multipliers[t] = 1;
-    }
-  }
-  next.propertyTypeMultipliers = multipliers;
+
+  // ── Migrate old flat format → configurations[] ──────────────────────
+  const types = Array.isArray(next.propertyTypes) && next.propertyTypes.length > 0
+    ? next.propertyTypes
+    : next.propertyType
+      ? [next.propertyType]
+      : ["Apartment"];
+
+  const multipliers = next.propertyTypeMultipliers || {};
+  const sharedScope = next.scopeItems || [];
+  const sharedInclusions = next.inclusions || [];
+  const sharedExclusions = next.exclusions || [];
+  const sharedSize = next.sizeRange || "";
+
+  next.configurations = types.map((t) => ({
+    propertyType: t,
+    multiplier: typeof multipliers[t] === "number" && multipliers[t] > 0 ? multipliers[t] : 1,
+    sizeRange: sharedSize,
+    scopeItems: sharedScope.map((s) => ({
+      ...s,
+      materials: s.materials ? s.materials.map((m) => ({ ...m })) : [],
+    })),
+    inclusions: [...sharedInclusions],
+    exclusions: [...sharedExclusions],
+  }));
+
+  // Clean up legacy top-level fields
+  delete next.propertyType;
+  delete next.propertyTypes;
+  delete next.propertyTypeMultipliers;
+  delete next.sizeRange;
+  delete next.scopeItems;
+  delete next.inclusions;
+  delete next.exclusions;
+  next.label = next.label || "";
   return next;
 };
 
@@ -183,8 +235,8 @@ const normalizePreset = (p) => {
 // Falls back to 1.0 (no premium / discount) if not configured.
 export const getMultiplierFor = (preset, type) => {
   if (!preset || !type) return 1;
-  const m = preset.propertyTypeMultipliers?.[type];
-  return typeof m === "number" && m > 0 ? m : 1;
+  const cfg = (preset.configurations || []).find((c) => c.propertyType === type);
+  return cfg && typeof cfg.multiplier === "number" && cfg.multiplier > 0 ? cfg.multiplier : 1;
 };
 
 const normalizeMaster = (master) => {
@@ -221,6 +273,23 @@ export const resetMaster = () => {
 export const getPresets = () => getMaster();
 export const getPresetKeys = () => Object.keys(getMaster());
 export const getPreset = (key) => getMaster()[key];
+
+// ── Configuration helpers ─────────────────────────────────────────────────
+// Return the list of property types available under a given preset key.
+export const getPropertyTypesForPreset = (key) => {
+  const preset = getPreset(key);
+  if (!preset) return [];
+  return (preset.configurations || []).map((c) => c.propertyType);
+};
+
+// Return the specific configuration for a preset + property type combo.
+// Falls back to the first configuration if the type isn't found.
+export const getConfigForType = (key, propertyType) => {
+  const preset = getPreset(key);
+  if (!preset) return null;
+  const configs = preset.configurations || [];
+  return configs.find((c) => c.propertyType === propertyType) || configs[0] || null;
+};
 
 // Backwards-compat alias — some callers import QUOTE_PRESETS directly. New
 // code should prefer getPresets()/getPreset().

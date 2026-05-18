@@ -42,7 +42,7 @@ const Client = () => {
   });
 
   // Full merged dataset (new + static, minus deleted)
-  const allClients = useMemo(() => {
+  const allClients = useMemo(() => { 
     const baseData = [...ClientTableData];
     const trulyNew = [];
 

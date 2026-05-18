@@ -24,6 +24,7 @@ import {
   computeTotals,
   generateQuoteId,
   saveQuote,
+  getConfigForType,
 } from "../data/QuotePresets";
 import { computeLibraryItemAmount } from "../data/itemLibrary";
 import { formatAmount } from "../utils/formatAmount";
@@ -81,8 +82,8 @@ const buildInitialFormData = ({
       recipientEmail: recipient?.email || "",
       recipientPhone: recipient?.phone || "",
       propertyType:
-        presetData.propertyType || defaultPropertyType || fallback.propertyType || "",
-      sizeRange: presetData.sizeRange || fallback.sizeRange || "",
+        presetData.propertyType || defaultPropertyType || "",
+      sizeRange: presetData.sizeRange || "",
       validityDays: presetData.validityDays || 30,
       scopeItems: (presetData.scopeItems || fallback.scopeItems || []).map(
         (s) => ({
@@ -96,21 +97,22 @@ const buildInitialFormData = ({
     };
   }
   const preset = getPreset(presetKey) || getPreset(presetKeys[0]) || {};
+  const cfg = preset.configurations?.[0] || {};
   return {
     quoteId: generateQuoteId(),
     createdAt: new Date().toISOString(),
     recipientName: recipient?.name || "",
     recipientEmail: recipient?.email || "",
     recipientPhone: recipient?.phone || "",
-    propertyType: defaultPropertyType || preset.propertyType || "",
-    sizeRange: preset.sizeRange || "",
+    propertyType: defaultPropertyType || cfg.propertyType || "",
+    sizeRange: cfg.sizeRange || "",
     validityDays: 30,
-    scopeItems: (preset.scopeItems || []).map((s) => ({
+    scopeItems: (cfg.scopeItems || []).map((s) => ({
       ...s,
       materials: s.materials ? s.materials.map((m) => ({ ...m })) : [],
     })),
-    inclusions: [...(preset.inclusions || [])],
-    exclusions: [...(preset.exclusions || [])],
+    inclusions: [...(cfg.inclusions || [])],
+    exclusions: [...(cfg.exclusions || [])],
     notes: "",
   };
 };
@@ -181,18 +183,18 @@ const QuoteModal = ({
   const handlePresetChange = (e) => {
     const key = e.target.value;
     setPresetKey(key);
-    const preset = getPreset(key);
-    if (!preset) return;
+    const cfg = getConfigForType(key);
+    if (!cfg) return;
     setFormData((prev) => ({
       ...prev,
-      propertyType: preset.propertyType,
-      sizeRange: preset.sizeRange,
-      scopeItems: (preset.scopeItems || []).map((s) => ({
+      propertyType: cfg.propertyType,
+      sizeRange: cfg.sizeRange,
+      scopeItems: (cfg.scopeItems || []).map((s) => ({
         ...s,
         materials: s.materials ? s.materials.map((m) => ({ ...m })) : [],
       })),
-      inclusions: [...(preset.inclusions || [])],
-      exclusions: [...(preset.exclusions || [])],
+      inclusions: [...(cfg.inclusions || [])],
+      exclusions: [...(cfg.exclusions || [])],
     }));
   };
 

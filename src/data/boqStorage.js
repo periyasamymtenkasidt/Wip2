@@ -2,7 +2,7 @@
 // `boq_<id>` keys with a master index at `boq_index`. The index is the list
 // view on `/boq`; individual BOQ records hold the full sections + items.
 
-import { getPreset } from "./QuotePresets";
+import { getPreset, getConfigForType } from "./QuotePresets";
 import { PAYMENT_MILESTONES } from "./MilestoneConfig";
 
 const INDEX_KEY = "boq_index";
@@ -234,9 +234,9 @@ export const createBoq = ({
   // Seed from a ProposalMaster preset if requested. Each scope row becomes
   // a section with one default line item the user can refine.
   if (basedOnPreset) {
-    const preset = getPreset(basedOnPreset);
-    if (preset) {
-      sections = (preset.scopeItems || []).map((scope) => ({
+    const cfg = getConfigForType(basedOnPreset);
+    if (cfg) {
+      sections = (cfg.scopeItems || []).map((scope) => ({
         id: genShortId(),
         name: scope.area || "Untitled",
         category: "gray",
