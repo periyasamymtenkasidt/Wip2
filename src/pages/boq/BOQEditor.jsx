@@ -1215,9 +1215,9 @@ const BOQEditor = () => {
               </div>
             </section>
 
-            {/* What's Included */}
+            {/*  Included */}
             <BulletListEditor
-              title="What's Included"
+              title="Included"
               icon={<CheckCircle2 size={13} className="text-emerald-600" />}
               accent="emerald"
               items={boq.inclusions || []}

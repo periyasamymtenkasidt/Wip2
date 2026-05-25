@@ -443,6 +443,8 @@ const LeadEdit = () => {
       status: updatedData.inquiryStatus || lead.status,
       investment: updatedData.investmentRange || lead.investment,
       inquirySource: updatedData.inquirySource || lead.inquirySource,
+      referralPersonName: updatedData.referralPersonName || "",
+      referralPersonEmail: updatedData.referralPersonEmail || "",
       possessionDate: updatedData.processionDate
         ? updatedData.processionDate.split("-").reverse().join(".")
         : lead.possessionDate,
@@ -915,7 +917,13 @@ const LeadEdit = () => {
                     Project Scope
                   </p>
                   <p className="text-[14px] font-bold text-gray-800">
-                    {lead.scope}
+                    {(() => {
+                      const presetKey = lead.quotePreset || "";
+                      const propType = lead.propertyType || "";
+                      if (!presetKey) return lead.scope || "—";
+                      const formattedPresetKey = presetKey.replace(/^(\d+)(BHK)$/i, "$1 BHK");
+                      return `${formattedPresetKey} / ${propType}`;
+                    })()}
                   </p>
                 </div>
               </div>

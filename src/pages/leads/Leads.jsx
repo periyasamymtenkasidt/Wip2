@@ -162,6 +162,9 @@ const Leads = () => {
       propertyType: formData.propertyType,
       architecturalNotes: formData.architecturalNotes,
       inquirySource: formData.inquirySource,
+      // Referral details — only meaningful when inquirySource is 'Referral'
+      referralPersonName: formData.referralPersonName || "",
+      referralPersonEmail: formData.referralPersonEmail || "",
       // Property preset captured at inquiry — used as the starting
       // template when the Send Proposal flow opens later.
       quotePreset: formData.quotePreset,
@@ -208,7 +211,17 @@ const Leads = () => {
       ),
     },
     { key: "phone", label: "Phone" },
-    { key: "scope", label: "Scope" },
+    {
+      key: "scope",
+      label: "Scope",
+      render: (_, item) => {
+        const presetKey = item.quotePreset || "";
+        const propType = item.propertyType || "";
+        if (!presetKey) return item.scope || "—";
+        const formattedPresetKey = presetKey.replace(/^(\d+)(BHK)$/i, "$1 BHK");
+        return `${formattedPresetKey} / ${propType}`;
+      }
+    },
     {
       key: "location",
       label: "Location",

@@ -423,7 +423,7 @@ const BOQDocument = ({ boq, totals, gstSplits }) => {
           {(boq.inclusions || []).filter(Boolean).length > 0 && (
             <div>
               <p className="text-[11px] font-bold text-textcolor mb-1 border-b-2 border-emerald-500 pb-1">
-                What's Included
+              Included
               </p>
               <ul className="text-[10.5px] text-text-muted space-y-0.5 mt-1.5 leading-snug">
                 {(boq.inclusions || [])
