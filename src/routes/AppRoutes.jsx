@@ -21,8 +21,12 @@ const Support = lazy(() => import("../pages/Support"));
 const Deals = lazy(() => import("../pages/deals/Deals"));
 const Projects = lazy(() => import("../pages/projects/Projects"));
 const ProjectDetail = lazy(() => import("../pages/projects/ProjectDetail"));
-const Settings = lazy(() => import("../pages/settings/Settings"));
+const Master=lazy(()=>import("../pages/master/Master"));
+const ProposalMaster=lazy(()=>import("../pages/master/proposalMaster/ProposalMaster"));
+const ItemLibrary=lazy(()=>import("../pages/master/itemMaster/ItemLibrary"));
+const TermsAndConditions=lazy(()=>import("../pages/master/termsAndConditions/TermsAndConditions"));
 const BOQList = lazy(() => import("../pages/boq/BOQList"));
+const Settings = lazy(() => import("../pages/settings/Settings"));
 const BOQEditor = lazy(() => import("../pages/boq/BOQEditor"));
 
 const LoadingFallback = () => (
@@ -54,6 +58,12 @@ const AppRoutes = () => {
           <Route path="boq">
             <Route index element={<BOQList />} />
             <Route path=":id" element={<BOQEditor />} />
+          </Route>
+          <Route path="master">
+            <Route index element={<Master />} />
+            <Route path=":id" element={<ProposalMaster />} />
+            <Route path=":id" element={<ItemLibrary/>}/>
+            <Route path=":id" element={<TermsAndConditions/>}/>
           </Route>
           <Route path="deals" element={<Deals />} />
           <Route path="accounts" element={<Accounts />} />

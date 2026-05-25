@@ -22,6 +22,20 @@ const editInquirySchema = yup.object().shape({
       /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
       "Enter a valid email address",
     ),
+  referralPersonName: yup.string().when("inquirySource", {
+    is: "Referral",
+    then: (s) => s.required("Referral Person Name is required"),
+    otherwise: (s) => s.notRequired(),
+  }),
+  referralPersonEmail: yup.string().when("inquirySource", {
+    is: "Referral",
+    then: (s) =>
+      s
+        .required("Referral Person Email is required")
+        .trim()
+        .matches(/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Enter a valid email address"),
+    otherwise: (s) => s.notRequired(),
+  }),
   quotePreset: yup.string().required("Property Preset is required"),
   propertyType: yup.string().required("Property Type is required"),
   location: yup.string().required("Location is required"),
@@ -55,6 +69,8 @@ const INITIAL_FORM_STATE = {
   phoneNumber: "",
   email: "",
   inquirySource: "",
+  referralPersonName: "",
+  referralPersonEmail: "",
   investmentRange: "",
   processionDate: "",
   location: "",
@@ -123,6 +139,7 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
   const quotePreset = watch("quotePreset");
   const propertyType = watch("propertyType");
   const investmentRange = watch("investmentRange");
+  const inquirySource = watch("inquirySource");
 
   useEffect(() => {
     if (!initialData) return;
@@ -152,20 +169,23 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
         ? initialData.propertyType
         : presetDefaults.propertyType;
 
+    const liveCfg = getConfigForType(presetKey, resolvedPropertyType);
+    const resolvedSizeRange = liveCfg?.sizeRange || initialData.quoteSizeRange || presetDefaults.quoteSizeRange || "";
+
     reset({
       fullName: initialData.clientName || "",
       phoneNumber: initialData.phone || "",
       email: initialData.email || "",
       inquirySource: initialData.inquirySource || "",
+      referralPersonName: initialData.referralPersonName || "",
+      referralPersonEmail: initialData.referralPersonEmail || "",
       investmentRange: initialData.investment || "",
       processionDate,
       location: initialData.location || "",
       inquiryStatus: initialData.status || "",
       architecturalNotes: initialData.architecturalNotes || "",
       quotePreset: presetKey,
-      // existing lead values win over preset defaults, so manual edits stick
-      quoteSizeRange:
-        initialData.quoteSizeRange ?? presetDefaults.quoteSizeRange,
+      quoteSizeRange: resolvedSizeRange,
       propertyType: resolvedPropertyType,
     });
   }, [initialData, presetKeys, reset]);
@@ -205,6 +225,15 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
     }
     return bands;
   }, [effectiveBaseline, investmentRange]);
+
+  useEffect(() => {
+    if (quotePreset && propertyType) {
+      const cfg = getConfigForType(quotePreset, propertyType);
+      if (cfg) {
+        setValue("quoteSizeRange", cfg.sizeRange || "");
+      }
+    }
+  }, [quotePreset, propertyType, setValue]);
 
   const handlePresetChange = (e) => {
     const key = e.target.value;
@@ -286,6 +315,28 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
           <div className="grid grid-cols-2 gap-4 mt-4">
             {CLIENT_INFO_FIELDS.slice(2, 4).map(field)}
           </div>
+
+          {/* Referral-specific fields — shown only when inquirySource is 'Referral' */}
+          {inquirySource === "Referral" && (
+            <div className="grid grid-cols-2 gap-4 mt-4">
+              <InputField
+                name="referralPersonName"
+                label="Referral Person Name"
+                type="text"
+                register={register("referralPersonName")}
+                error={errors.referralPersonName?.message}
+                placeholder="Name of the referring person"
+              />
+              <InputField
+                name="referralPersonEmail"
+                label="Referral Person Email"
+                type="email"
+                register={register("referralPersonEmail")}
+                error={errors.referralPersonEmail?.message}
+                placeholder="referrer@domain.com"
+              />
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border mb-6" />
@@ -323,7 +374,7 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
                     Size Range
                   </span>
                   <strong className="text-text">
-                    {activePreset?.configurations?.[0]?.sizeRange || "—"}
+                    {getConfigForType(quotePreset, propertyType)?.sizeRange || "—"}
                   </strong>
                 </span>
                 {presetTotals && (
@@ -342,17 +393,9 @@ function EditInquiryform({ initialData, onClose, onAddLead }) {
                     )}
                   </span>
                 )}
-                <span className="flex items-center gap-1.5">
-                  <span className="text-text-subtle uppercase tracking-wider text-[10px] font-semibold">
-                    Applies to
-                  </span>
-                  <strong className="text-text">
-                    {getPropertyTypesForPreset(quotePreset).join(", ") || "—"}
-                  </strong>
-                </span>
               </div>
               <p className="text-[10.5px] text-text-subtle mt-1.5">
-                Edit these values in <strong>Settings → Proposal Master</strong>.
+                Edit these values in <strong> → Proposal Master</strong>.
               </p>
             </div>
           )}

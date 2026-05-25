@@ -199,38 +199,48 @@ const QuotePreview = ({ quote }) => {
       </div>
 
       {/* Inclusions / Exclusions */}
-      <div className="grid grid-cols-2 gap-6 mt-6">
-        {quote.inclusions?.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-emerald-700 font-bold mb-2">
-              What's Included
-            </p>
-            <ul className="space-y-1 text-[12px] text-text-muted">
-              {quote.inclusions.map((line, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-emerald-600 shrink-0">✓</span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-        {quote.exclusions?.length > 0 && (
-          <div>
-            <p className="text-[10px] uppercase tracking-widest text-red-600 font-bold mb-2">
-              Not Included
-            </p>
-            <ul className="space-y-1 text-[12px] text-text-muted">
-              {quote.exclusions.map((line, i) => (
-                <li key={i} className="flex gap-2">
-                  <span className="text-red-500 shrink-0">✕</span>
-                  <span>{line}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-      </div>
+      {(quote.inclusions?.length > 0 || quote.exclusions?.length > 0) && (
+        <div className="grid grid-cols-2 gap-6 mt-6">
+          {/* Left column: inclusions if present, otherwise empty placeholder to push exclusions right */}
+          {quote.inclusions?.length > 0 ? (
+            <div>
+              <p className="text-[10px]  tracking-widest text-emerald-700 font-bold mb-2">
+                Included
+              </p>
+              <ul className="space-y-1 text-[12px] text-text-muted">
+                {quote.inclusions.map((line, i) => (
+                  <li key={i} className="flex gap-2 items-start">
+                    <svg className="w-3.5 h-3.5 text-emerald-600 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : (
+            /* Empty placeholder so exclusions stay in the right column */
+            <div />
+          )}
+          {quote.exclusions?.length > 0 && (
+            <div>
+              <p className="text-[10px]  tracking-widest text-red-600 font-bold mb-2">
+                Not Included
+              </p>
+              <ul className="space-y-1 text-[12px] text-text-muted">
+                {quote.exclusions.map((line, i) => (
+                  <li key={i} className="flex gap-2 items-start">
+                    <svg className="w-3.5 h-3.5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    <span>{line}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Notes */}
       {quote.notes && (

@@ -45,6 +45,14 @@
 --color-placeholder:#cbd5e1;
 }
 
+/* Hidden scrollbar utility */
+.scroll-hidden-bar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-hidden-bar::-webkit-scrollbar {
+  display: none;
+}
 
 /* Logo shimmer sweep — used on the WIP brand block in the app header.
    A soft highlight glides across the logo every few seconds. */

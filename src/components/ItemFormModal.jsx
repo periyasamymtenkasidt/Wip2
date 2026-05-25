@@ -14,10 +14,10 @@ import {
   Bath,
   DoorOpen,
   Building2,
-  Library,
   Ruler,
   Calculator,
 } from "lucide-react";
+import { GiCardPickup } from "react-icons/gi";
 import { useForm } from "react-hook-form";
 import { yupResolver } from "@hookform/resolvers/yup";
 import * as yup from "yup";
@@ -562,7 +562,7 @@ const LibraryPicker = ({ excludeId, onClose, onPick }) => {
         <div className="px-5 py-4 border-b border-bordergray flex items-center justify-between bg-linear-to-r from-select-blue/5 to-white">
           <div className="flex items-center gap-2">
             <span className="h-8 w-8 rounded-lg bg-select-blue/10 text-select-blue flex items-center justify-center">
-              <Library size={14} />
+              <GiCardPickup size={14} />
             </span>
             <div>
               <h3 className="text-[13px] font-bold text-textcolor">

@@ -6,6 +6,8 @@ import { FaRegFileLines, FaRegHandshake } from "react-icons/fa6";
 import { TbDeviceDesktopAnalytics } from "react-icons/tb";
 import { MdOutlineContactSupport } from "react-icons/md";
 import { PiSignOut } from "react-icons/pi";
+import { LuLayers } from "react-icons/lu";
+
 
 export const Menus = [
     { name: "Dashboard", icon: MdOutlineDashboard, path: "/dashboard" },
@@ -14,10 +16,13 @@ export const Menus = [
     {name:"Client", icon:PiUsersThreeBold,path:"/clients"},
     {name:"Deals", icon:FaRegHandshake,path:"/deals"},
     { name: "BOQ", icon: MdOutlineReceiptLong, path: "/boq" },
+    {name:"Master",icon:LuLayers,path:"/master"},
     { name: "Accounts", icon: PiSuitcaseSimpleBold, path: "/accounts" },
     { name: "Pipeline", icon:  TbDeviceDesktopAnalytics, path: "/pipeline" },
     { name: "Analytics", icon: MdOutlineAnalytics, path: "/analytics" },
     { name: "Reports", icon: FaRegFileLines, path: "/reports" },
+   
+
 ];
 
 export const SupportMenu = [

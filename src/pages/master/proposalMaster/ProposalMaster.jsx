@@ -47,11 +47,11 @@ import {
   computeTotals,
   GST_RATE,
   DEFAULT_PRESETS,
-} from "../../data/QuotePresets";
-import { formatAmount } from "../../utils/formatAmount";
-import ItemFormModal from "../../components/ItemFormModal";
-import { computeLibraryItemAmount } from "../../data/itemLibrary";
-import { PROPERTY_TYPES } from "../../helperConfigData/helperData";
+} from "../../../data/QuotePresets";
+import { formatAmount } from "../../../utils/formatAmount";
+import ItemFormModal from "../../../components/ItemFormModal";
+import { computeLibraryItemAmount } from "../../../data/itemLibrary";
+import { PROPERTY_TYPES } from "../../../helperConfigData/helperData";
 
 const blankScope = () => ({
   area: "",
@@ -252,7 +252,8 @@ const ProposalMaster = () => {
   }, [activeKey]);
 
   // Derived: the currently-active property-type configuration
-  const activeConfig = active?.configurations?.[activeConfigIdx] || active?.configurations?.[0];
+  const activeConfig =
+    active?.configurations?.[activeConfigIdx] || active?.configurations?.[0];
 
   useEffect(() => {
     saveMaster(master);
@@ -278,6 +279,17 @@ const ProposalMaster = () => {
     }));
   };
 
+  // Automatically update the preset label based on key and active config property type
+  useEffect(() => {
+    if (active && activeConfig?.propertyType) {
+      const formattedKey = activeKey.replace(/^(\d+)(BHK)$/i, "$1 BHK");
+      const generatedLabel = `${formattedKey} / ${activeConfig.propertyType}`;
+      if (active.label !== generatedLabel) {
+        updateActive({ label: generatedLabel });
+      }
+    }
+  }, [activeKey, activeConfig?.propertyType, active]);
+
   // Config-level updates (scope, inclusions, exclusions, sizeRange, etc.)
   const setConfigField = (updater) => {
     setMaster((prev) => {
@@ -299,13 +311,21 @@ const ProposalMaster = () => {
 
   const addScopeRow = (preset) => {
     const newRow = preset
-      ? { area: preset.name, description: preset.hint || "", amount: 0, materials: [] }
+      ? {
+          area: preset.name,
+          description: preset.hint || "",
+          amount: 0,
+          materials: [],
+        }
       : blankScope();
     setConfigField((cfg) => ({
       ...cfg,
-      scopeItems: [...cfg.scopeItems, newRow],
+      scopeItems: [newRow, ...cfg.scopeItems],
     }));
-    setExpanded((p) => ({ ...p, [activeConfig?.scopeItems?.length || 0]: false }));
+    setExpanded((p) => ({
+      ...p,
+      [0]: false,
+    }));
     if (preset) showToast(`Added "${preset.name}"`, "success");
   };
 
@@ -320,7 +340,7 @@ const ProposalMaster = () => {
     };
     setConfigField((cfg) => ({
       ...cfg,
-      scopeItems: [...cfg.scopeItems, newRow],
+      scopeItems: [newRow, ...cfg.scopeItems],
     }));
     setScopeFormOpen(false);
     showToast(`Added "${newRow.area || "scope"}"`, "success");
@@ -339,7 +359,12 @@ const ProposalMaster = () => {
       ...cfg,
       scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
-          ? { ...s, materials: (s.materials || []).map((m, j) => j === matIdx ? { ...m, [key]: value } : m) }
+          ? {
+              ...s,
+              materials: (s.materials || []).map((m, j) =>
+                j === matIdx ? { ...m, [key]: value } : m,
+              ),
+            }
           : s,
       ),
     }));
@@ -369,7 +394,10 @@ const ProposalMaster = () => {
         ) || ""
       ];
     if (!kit) {
-      showToast("Set the area first (e.g. Kitchen) to use the material kit", "info");
+      showToast(
+        "Set the area first (e.g. Kitchen) to use the material kit",
+        "info",
+      );
       return;
     }
     setConfigField((cfg) => ({
@@ -389,32 +417,12 @@ const ProposalMaster = () => {
       ...cfg,
       scopeItems: cfg.scopeItems.map((s, i) =>
         i === scopeIdx
-          ? { ...s, materials: (s.materials || []).filter((_, j) => j !== matIdx) }
+          ? {
+              ...s,
+              materials: (s.materials || []).filter((_, j) => j !== matIdx),
+            }
           : s,
       ),
-    }));
-  };
-
-  // Inclusions / exclusions list operations (config-level)
-  const updateListItem = (key, idx, value) => {
-    setConfigField((cfg) => {
-      const list = [...(cfg[key] || [])];
-      list[idx] = value;
-      return { ...cfg, [key]: list };
-    });
-  };
-
-  const addListItem = (key) => {
-    setConfigField((cfg) => ({
-      ...cfg,
-      [key]: [...(cfg[key] || []), ""],
-    }));
-  };
-
-  const removeListItem = (key, idx) => {
-    setConfigField((cfg) => ({
-      ...cfg,
-      [key]: (cfg[key] || []).filter((_, i) => i !== idx),
     }));
   };
 
@@ -425,7 +433,8 @@ const ProposalMaster = () => {
       showToast("A preset with that name already exists", "error");
       return;
     }
-    setMaster((prev) => ({ ...prev, [trimmed]: blankPreset() }));
+    // Prepend new preset as the first entry
+    setMaster((prev) => ({ [trimmed]: blankPreset(), ...prev }));
     setActiveKey(trimmed);
     setNewPresetKey("");
     setShowAddPreset(false);
@@ -585,7 +594,10 @@ const ProposalMaster = () => {
 
   const sortedScope = useMemo(() => {
     if (!activeConfig) return [];
-    const copy = (activeConfig.scopeItems || []).map((item, idx) => ({ item, idx }));
+    const copy = (activeConfig.scopeItems || []).map((item, idx) => ({
+      item,
+      idx,
+    }));
     if (sortBy === "amount-desc") {
       copy.sort(
         (a, b) => (Number(b.item.amount) || 0) - (Number(a.item.amount) || 0),
@@ -608,10 +620,7 @@ const ProposalMaster = () => {
 
   const scopeItems = activeConfig?.scopeItems || [];
   const totals = computeTotals(scopeItems);
-  const maxScope = Math.max(
-    1,
-    ...scopeItems.map((s) => Number(s.amount) || 0),
-  );
+  const maxScope = Math.max(1, ...scopeItems.map((s) => Number(s.amount) || 0));
   const avgSqft = extractAvgSqft(activeConfig?.sizeRange);
   const costPerSqft =
     avgSqft && totals.grandTotal
@@ -619,9 +628,9 @@ const ProposalMaster = () => {
       : null;
 
   return (
-    <div className="bg-overallbg font-sans h-full overflow-y-auto pb-28">
+    <div className="bg-overallbg font-sans h-full overflow-hidden flex flex-col">
       {/* ── Top header ─────────────────────────────────────────────────── */}
-      <div className="sticky top-0 z-30 bg-overallbg/80 backdrop-blur-xl border-b border-bordergray/70">
+      <div className="shrink-0 z-30 bg-overallbg/80 backdrop-blur-xl border-b border-bordergray/70">
         <div className="px-6 py-4 flex justify-between items-center flex-wrap gap-3">
           <div className="flex items-center gap-3">
             <div className="relative h-11 w-11 rounded-xl bg-linear-to-br from-select-blue to-primary text-white flex items-center justify-center shadow-lg shadow-select-blue/20">
@@ -712,11 +721,11 @@ const ProposalMaster = () => {
         </div>
       </div>
 
-      <div className="px-6 py-5">
-        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_340px] gap-5">
+      <div className="px-6 py-5 flex-1 min-h-0 overflow-hidden">
+        <div className="grid grid-cols-1 lg:grid-cols-[280px_minmax(0,1fr)_340px] gap-5 items-stretch h-full">
           {/* ── Left: Preset rail ───────────────────────────────────────── */}
-          <aside className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] h-fit lg:sticky lg:top-[210px]">
-            <div className="p-4 border-b border-bordergray">
+          <aside className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] flex flex-col overflow-y-auto scroll-hidden-bar">
+            <div className="p-4 border-b border-bordergray shrink-0">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-1.5">
                   <Layers size={13} className="text-select-blue" />
@@ -743,7 +752,7 @@ const ProposalMaster = () => {
               </div>
             </div>
 
-            <div className="p-2 max-h-[55vh] overflow-y-auto">
+            <div className="p-2 max-h-[55vh] overflow-y-auto scroll-hidden-bar">
               {filteredKeys.length === 0 ? (
                 <p className="text-[11px] text-text-subtle text-center py-4">
                   No matches
@@ -751,7 +760,9 @@ const ProposalMaster = () => {
               ) : (
                 filteredKeys.map((k) => {
                   const p = master[k];
-                  const allCfgItems = (p.configurations || []).flatMap((c) => c.scopeItems || []);
+                  const allCfgItems = (p.configurations || []).flatMap(
+                    (c) => c.scopeItems || [],
+                  );
                   const t = computeTotals(allCfgItems);
                   const firstCfg = p.configurations?.[0];
                   const isActive = k === activeKey;
@@ -780,7 +791,8 @@ const ProposalMaster = () => {
                           </span>
                         </div>
                         <span className="text-[10px] font-semibold text-text-muted bg-white/70 px-1.5 py-0.5 rounded-md border border-bordergray">
-                          {(p.configurations || []).length} type{(p.configurations || []).length === 1 ? "" : "s"}
+                          {(p.configurations || []).length} type
+                          {(p.configurations || []).length === 1 ? "" : "s"}
                         </span>
                       </div>
                       <p className="text-[10.5px] text-text-muted truncate ml-4">
@@ -858,9 +870,9 @@ const ProposalMaster = () => {
           </aside>
 
           {/* ── Middle: Editor ──────────────────────────────────────────── */}
-          <main className="space-y-5 min-w-0">
+          <main className="space-y-5 min-w-0 overflow-y-auto pb-28 scroll-hidden-bar">
             {/* Preset hero card */}
-            <section className="relative bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
+            <section className="relative bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-y-auto overflow-hidden">
               <div className="absolute inset-x-0 top-0 h-24 bg-linear-to-br from-select-blue/8 via-active-bg/40 to-transparent pointer-events-none" />
               <div className="relative px-5 py-4 border-b border-bordergray flex items-center justify-between gap-3">
                 <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -945,13 +957,14 @@ const ProposalMaster = () => {
                 <Field
                   icon={<Tag size={11} />}
                   label="Label"
-                  hint="Shown on the proposal cover"
+                  hint="Automatically generated from preset key and property type"
                 >
                   <input
                     type="text"
                     value={active.label}
-                    onChange={(e) => updateActive({ label: e.target.value })}
-                    className={inputBase}
+                    readOnly
+                    className={`${inputBase} bg-bg-soft border-bordergray cursor-not-allowed text-text-muted`}
+                    title="Automatically generated from preset key and property type"
                   />
                 </Field>
                 <Field
@@ -963,7 +976,10 @@ const ProposalMaster = () => {
                     type="text"
                     value={activeConfig?.sizeRange || ""}
                     onChange={(e) =>
-                      setConfigField((cfg) => ({ ...cfg, sizeRange: e.target.value }))
+                      setConfigField((cfg) => ({
+                        ...cfg,
+                        sizeRange: e.target.value,
+                      }))
                     }
                     placeholder="e.g. 800–1100 sq ft"
                     className={inputBase}
@@ -990,22 +1006,37 @@ const ProposalMaster = () => {
                             : "bg-white text-text-muted border-bordergray hover:border-select-blue/40 hover:text-select-blue"
                         }`}
                       >
-                        {idx === activeConfigIdx && <Check size={10} strokeWidth={3} />}
+                        {idx === activeConfigIdx && (
+                          <Check size={10} strokeWidth={3} />
+                        )}
                         {cfg.propertyType}
                         {cfg.multiplier !== 1 && (
-                          <span className={`text-[9px] font-bold ml-0.5 ${
-                            idx === activeConfigIdx ? "text-white/80" : "text-select-blue"
-                          }`}>×{cfg.multiplier}</span>
+                          <span
+                            className={`text-[9px] font-bold ml-0.5 ${
+                              idx === activeConfigIdx
+                                ? "text-white/80"
+                                : "text-select-blue"
+                            }`}
+                          >
+                            ×{cfg.multiplier}
+                          </span>
                         )}
                       </button>
                     ))}
                     <button
                       type="button"
                       onClick={() => {
-                        const existing = (active.configurations || []).map((c) => c.propertyType);
-                        const available = PROPERTY_TYPES.filter((t) => !existing.includes(t));
+                        const existing = (active.configurations || []).map(
+                          (c) => c.propertyType,
+                        );
+                        const available = PROPERTY_TYPES.filter(
+                          (t) => !existing.includes(t),
+                        );
                         if (available.length === 0) {
-                          showToast("All property types are already added", "info");
+                          showToast(
+                            "All property types are already added",
+                            "info",
+                          );
                           return;
                         }
                         const newType = available[0];
@@ -1016,17 +1047,29 @@ const ProposalMaster = () => {
                             propertyType: newType,
                             multiplier: 1,
                             sizeRange: configs[0]?.sizeRange || "",
-                            scopeItems: (configs[0]?.scopeItems || []).map((s) => ({
-                              ...s,
-                              materials: s.materials ? s.materials.map((m) => ({ ...m })) : [],
-                            })),
+                            scopeItems: (configs[0]?.scopeItems || []).map(
+                              (s) => ({
+                                ...s,
+                                materials: s.materials
+                                  ? s.materials.map((m) => ({ ...m }))
+                                  : [],
+                              }),
+                            ),
                             inclusions: [...(configs[0]?.inclusions || [])],
                             exclusions: [...(configs[0]?.exclusions || [])],
                           });
-                          return { ...prev, [activeKey]: { ...preset, configurations: configs } };
+                          return {
+                            ...prev,
+                            [activeKey]: { ...preset, configurations: configs },
+                          };
                         });
-                        setActiveConfigIdx((active.configurations || []).length);
-                        showToast(`Added "${newType}" configuration`, "success");
+                        setActiveConfigIdx(
+                          (active.configurations || []).length,
+                        );
+                        showToast(
+                          `Added "${newType}" configuration`,
+                          "success",
+                        );
                       }}
                       className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-dashed border-bordergray text-[11px] font-semibold text-text-muted hover:border-select-blue hover:text-select-blue transition-all"
                     >
@@ -1037,8 +1080,12 @@ const ProposalMaster = () => {
                 {activeConfig && (
                   <div className="mt-2 flex items-center gap-3">
                     <div className="flex items-center gap-1.5 text-[11px]">
-                      <span className="text-text-subtle font-semibold">Multiplier:</span>
-                      <span className="text-[10px] font-semibold text-text-subtle">×</span>
+                      <span className="text-text-subtle font-semibold">
+                        Multiplier:
+                      </span>
+                      <span className="text-[10px] font-semibold text-text-subtle">
+                        ×
+                      </span>
                       <input
                         type="number"
                         step="0.05"
@@ -1046,8 +1093,12 @@ const ProposalMaster = () => {
                         value={activeConfig.multiplier}
                         onChange={(e) => {
                           const parsed = parseFloat(e.target.value);
-                          const val = !isFinite(parsed) || parsed <= 0 ? 1 : parsed;
-                          setConfigField((cfg) => ({ ...cfg, multiplier: val }));
+                          const val =
+                            !isFinite(parsed) || parsed <= 0 ? 1 : parsed;
+                          setConfigField((cfg) => ({
+                            ...cfg,
+                            multiplier: val,
+                          }));
                         }}
                         title="Price multiplier vs baseline (1.0 = same)"
                         className={`w-14 text-[11px] font-bold tabular-nums bg-white border border-bordergray rounded-md px-2 py-1 focus:outline-none focus:border-select-blue ${activeConfig.multiplier !== 1 ? "text-select-blue" : "text-textcolor"}`}
@@ -1059,17 +1110,29 @@ const ProposalMaster = () => {
                         onClick={() => {
                           askConfirm({
                             title: `Remove "${activeConfig.propertyType}"?`,
-                            message: "This property type configuration and its scope will be removed from this preset.",
+                            message:
+                              "This property type configuration and its scope will be removed from this preset.",
                             confirmLabel: "Remove",
                             danger: true,
                             onConfirm: () => {
                               setMaster((prev) => {
                                 const preset = prev[activeKey];
-                                const configs = (preset.configurations || []).filter((_, i) => i !== activeConfigIdx);
-                                return { ...prev, [activeKey]: { ...preset, configurations: configs } };
+                                const configs = (
+                                  preset.configurations || []
+                                ).filter((_, i) => i !== activeConfigIdx);
+                                return {
+                                  ...prev,
+                                  [activeKey]: {
+                                    ...preset,
+                                    configurations: configs,
+                                  },
+                                };
                               });
                               setActiveConfigIdx(0);
-                              showToast(`Removed "${activeConfig.propertyType}"`, "info");
+                              showToast(
+                                `Removed "${activeConfig.propertyType}"`,
+                                "info",
+                              );
                             },
                           });
                         }}
@@ -1109,7 +1172,8 @@ const ProposalMaster = () => {
                     </h2>
                     <p className="text-[10.5px] text-text-muted">
                       {scopeItems.length} area
-                      {scopeItems.length === 1 ? "" : "s"} · {activeConfig?.propertyType || ""}
+                      {scopeItems.length === 1 ? "" : "s"} ·{" "}
+                      {activeConfig?.propertyType || ""}
                     </p>
                   </div>
                 </div>
@@ -1365,7 +1429,7 @@ const ProposalMaster = () => {
           </main>
 
           {/* ── Right: Stats + Inclusions / Exclusions ──────────────────── */}
-          <aside className="space-y-5">
+          <aside className="space-y-5 min-w-0 overflow-y-auto pb-28">
             <section className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
               <div className="px-4 py-3 border-b border-bordergray flex items-center gap-2">
                 <BarChart3 size={13} className="text-select-blue" />
@@ -1373,7 +1437,7 @@ const ProposalMaster = () => {
                   Cost Breakdown
                 </h3>
               </div>
-              <div className="p-4 space-y-3">
+              <div className="p-4 space-y-3 overflow-y-auto">
                 {scopeItems.length === 0 ? (
                   <p className="text-[11px] text-text-subtle text-center py-2">
                     Add scope items to see distribution
@@ -1429,27 +1493,6 @@ const ProposalMaster = () => {
                 </div>
               )}
             </section>
-
-            <ListEditor
-              title="What's Included"
-              icon={<CheckCircle2 size={13} className="text-emerald-600" />}
-              accent="emerald"
-              items={activeConfig?.inclusions || []}
-              onUpdate={(idx, v) => updateListItem("inclusions", idx, v)}
-              onAdd={() => addListItem("inclusions")}
-              onRemove={(idx) => removeListItem("inclusions", idx)}
-              placeholder="e.g. 3D visualizations of all rooms"
-            />
-            <ListEditor
-              title="Not Included"
-              icon={<XCircle size={13} className="text-red-500" />}
-              accent="red"
-              items={activeConfig?.exclusions || []}
-              onUpdate={(idx, v) => updateListItem("exclusions", idx, v)}
-              onAdd={() => addListItem("exclusions")}
-              onRemove={(idx) => removeListItem("exclusions", idx)}
-              placeholder="e.g. Civil work — demolition, plumbing"
-            />
           </aside>
         </div>
       </div>
@@ -1467,8 +1510,8 @@ const ProposalMaster = () => {
                   {activeKey} · Quote Summary
                 </p>
                 <p className="text-[10.5px] text-text-muted">
-                  {scopeItems.length} items · {activeConfig?.propertyType || ""} ·{" "}
-                  {totals.subtotal > 0 ? "live" : "empty"}
+                  {scopeItems.length} items · {activeConfig?.propertyType || ""}{" "}
+                  · {totals.subtotal > 0 ? "live" : "empty"}
                 </p>
               </div>
             </div>
@@ -1704,87 +1747,6 @@ const FooterStat = ({ label, value, accent = "text-textcolor" }) => (
     </span>
   </div>
 );
-
-const ListEditor = ({
-  title,
-  icon,
-  items,
-  onUpdate,
-  onAdd,
-  onRemove,
-  placeholder,
-  accent,
-}) => {
-  const bullet =
-    accent === "emerald"
-      ? "bg-emerald-100 text-emerald-700"
-      : "bg-red-100 text-red-600";
-  const headerTint =
-    accent === "emerald"
-      ? "from-emerald-50/60 to-white"
-      : "from-red-50/60 to-white";
-  return (
-    <div className="bg-white rounded-2xl border border-bordergray shadow-[0_1px_3px_rgba(15,23,42,0.04)] overflow-hidden">
-      <div
-        className={`px-4 py-3 border-b border-bordergray bg-linear-to-r ${headerTint} flex items-center justify-between`}
-      >
-        <div className="flex items-center gap-2">
-          {icon}
-          <h3 className="text-[12px] font-bold text-textcolor">{title}</h3>
-          <span className="text-[10px] font-semibold text-text-muted bg-white/70 px-1.5 py-0.5 rounded-md border border-bordergray">
-            {items.length}
-          </span>
-        </div>
-        <button
-          type="button"
-          onClick={onAdd}
-          className="flex items-center gap-1 text-[11px] font-semibold text-select-blue hover:text-primary"
-        >
-          <Plus size={12} /> Add
-        </button>
-      </div>
-      <div className="p-3 space-y-2">
-        {items.map((item, idx) => (
-          <div key={idx} className="flex items-start gap-2 group">
-            <span
-              className={`mt-2 h-4 w-4 rounded-full flex items-center justify-center shrink-0 ${bullet}`}
-            >
-              {accent === "emerald" ? (
-                <Check size={9} strokeWidth={3} />
-              ) : (
-                <X size={9} strokeWidth={3} />
-              )}
-            </span>
-            <input
-              type="text"
-              value={item}
-              onChange={(e) => onUpdate(idx, e.target.value)}
-              placeholder={placeholder}
-              className="bg-bg-soft border border-transparent text-[11.5px] text-textcolor rounded-lg px-2.5 py-1.5 w-full focus:outline-none focus:bg-white focus:border-select-blue/40 placeholder:text-text-subtle"
-            />
-            <button
-              type="button"
-              onClick={() => onRemove(idx)}
-              className="h-7 w-6 flex items-center justify-center rounded-md text-text-subtle hover:text-red-500 hover:bg-red-50 transition-colors shrink-0 opacity-0 group-hover:opacity-100"
-              title="Remove item"
-            >
-              <Trash2 size={11} />
-            </button>
-          </div>
-        ))}
-        {items.length === 0 && (
-          <button
-            type="button"
-            onClick={onAdd}
-            className="w-full text-[11px] text-text-subtle border border-dashed border-bordergray rounded-lg py-3 hover:border-select-blue hover:text-select-blue transition-colors"
-          >
-            + Add your first entry
-          </button>
-        )}
-      </div>
-    </div>
-  );
-};
 
 // ───────────────────────────────────────────────────────────────────────────
 

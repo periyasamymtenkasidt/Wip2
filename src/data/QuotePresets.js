@@ -5,21 +5,9 @@
 
 export const GST_RATE = 18;
 
-const COMMON_INCLUSIONS = [
-  "Site measurement & 2D drawings",
-  "3D visualizations of all rooms",
-  "Material as per quote specification",
-  "Installation & finishing",
-  "Project management throughout",
-  "1-year service warranty",
-];
+const COMMON_INCLUSIONS = [];
 
-const COMMON_EXCLUSIONS = [
-  "Civil work — demolition, plumbing, electrical rough-in",
-  "Appliances & soft furnishings (curtains, linen, decor)",
-  "Society / building approval charges",
-  "Any items not explicitly listed in the scope",
-];
+const COMMON_EXCLUSIONS = [];
 
 // Material-spec sets reused across multiple presets. Each entry is shown
 // inline under its scope row in the rendered quote (Plywood: BWP 19mm…).
@@ -50,7 +38,7 @@ const MAT_FOYER = [
 
 export const DEFAULT_PRESETS = {
   "1BHK": {
-    label: "1 BHK Apartment",
+    label: "1 BHK ${propertyTypes[0]}",
     propertyType: "Apartment",
     propertyTypes: ["Apartment", "Studio Apartment"],
     // Price multiplier per property type. Same scope, different finishes
